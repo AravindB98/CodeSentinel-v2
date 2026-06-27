@@ -1,0 +1,23 @@
+# Dogfooding: CodeSentinel scans its own source and reports to code scanning.
+name: Self Scan
+on:
+  push: { branches: [main] }
+  pull_request:
+permissions:
+  contents: read
+  security-events: write
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -e .
+      - run: python -m codesentinel.rag.ingest
+      - name: Scan (offline, advisory)
+        env: { CODESENTINEL_MOCK_LLM: "1" }
+        run: codesentinel scan codesentinel -f sarif -o codesentinel.sarif --fail-on CRITICAL || true
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with: { sarif_file: codesentinel.sarif }

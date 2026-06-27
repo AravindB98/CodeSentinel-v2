@@ -1,0 +1,81 @@
+# Default values for the CodeSentinel chart. Override per environment.
+replicaCount: 2
+
+image:
+  repository: ghcr.io/aravindb98/codesentinel
+  tag: ""              # defaults to .Chart.AppVersion
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  name: ""
+
+# Secrets are referenced, never hard-coded. Create the secret out-of-band or set
+# values here (which Helm will template into a Secret). For production / FedRAMP,
+# prefer an external secret store (External Secrets Operator, Vault).
+secrets:
+  create: true
+  anthropicApiKey: ""       # enables AI review; leave blank for offline engine
+  apiKeys: ""               # "tenant:secret,tenant2:secret2"
+  licenseKey: ""            # CS1.<...> signed license
+  licensePublicKey: ""      # PEM verification key
+
+env:
+  CODESENTINEL_LOG_FORMAT: json
+  CODESENTINEL_MAX_BODY_BYTES: "1048576"
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: codesentinel.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: "2"
+    memory: 2Gi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 75
+
+# Hardened pod/container security context (non-root, read-only fs, no caps).
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 999
+  fsGroup: 999
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+
+# NetworkPolicy default-deny egress except DNS + Anthropic API (set as needed).
+networkPolicy:
+  enabled: false
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

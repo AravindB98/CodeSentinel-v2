@@ -1,0 +1,26 @@
+# Drop this into .github/workflows/ to gate PRs and populate GitHub code scanning.
+name: CodeSentinel
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+  security-events: write   # required to upload SARIF
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: CodeSentinel scan
+        uses: AravindB98/CodeSentinel@v1
+        with:
+          path: .
+          fail-on: HIGH
+          # offline: "true"   # uncomment for air-gapped/no-key runs
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+      - name: Upload SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: codesentinel.sarif

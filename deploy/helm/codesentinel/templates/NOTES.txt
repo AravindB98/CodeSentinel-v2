@@ -1,0 +1,9 @@
+CodeSentinel {{ .Chart.AppVersion }} deployed as {{ include "codesentinel.fullname" . }}.
+
+1. Check rollout:
+   kubectl rollout status deploy/{{ include "codesentinel.fullname" . }}
+2. Port-forward to try it:
+   kubectl port-forward svc/{{ include "codesentinel.fullname" . }} 8080:{{ .Values.service.port }}
+   curl localhost:8080/healthz
+3. Set secrets (API keys / license) via the {{ include "codesentinel.fullname" . }}-secrets Secret
+   or an external secret store. Offline mode needs no Anthropic key.

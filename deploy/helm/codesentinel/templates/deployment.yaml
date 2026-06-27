@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "codesentinel.fullname" . }}
+  labels: {{- include "codesentinel.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels: {{- include "codesentinel.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "codesentinel.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "codesentinel.serviceAccountName" . }}
+      securityContext: {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: codesentinel
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext: {{- toYaml .Values.securityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.targetPort }}
+          env:
+            {{- range $k, $v := .Values.env }}
+            - name: {{ $k }}
+              value: {{ $v | quote }}
+            {{- end }}
+            {{- if .Values.secrets.create }}
+            - name: ANTHROPIC_API_KEY
+              valueFrom: { secretKeyRef: { name: {{ include "codesentinel.fullname" . }}-secrets, key: anthropic-api-key, optional: true } }
+            - name: CODESENTINEL_API_KEYS
+              valueFrom: { secretKeyRef: { name: {{ include "codesentinel.fullname" . }}-secrets, key: api-keys, optional: true } }
+            - name: CODESENTINEL_LICENSE_KEY
+              valueFrom: { secretKeyRef: { name: {{ include "codesentinel.fullname" . }}-secrets, key: license-key, optional: true } }
+            - name: CODESENTINEL_LICENSE_PUBKEY
+              valueFrom: { secretKeyRef: { name: {{ include "codesentinel.fullname" . }}-secrets, key: license-public-key, optional: true } }
+            {{- end }}
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            httpGet: { path: /readyz, port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+      {{- with .Values.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}

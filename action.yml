@@ -1,0 +1,54 @@
+name: "CodeSentinel Security Scan"
+description: "RAG-grounded, adversarially-validated AI code review. Uploads SARIF to code scanning."
+author: "Aravind Balaji"
+branding:
+  icon: shield
+  color: orange
+inputs:
+  path:
+    description: "Path to scan"
+    required: false
+    default: "."
+  fail-on:
+    description: "Fail the build on findings at/above this severity (CRITICAL|HIGH|MEDIUM|LOW|INFO)"
+    required: false
+    default: "HIGH"
+  format:
+    description: "Report format written to output-file"
+    required: false
+    default: "sarif"
+  output-file:
+    description: "Where to write the report"
+    required: false
+    default: "codesentinel.sarif"
+  config:
+    description: "Path to a .codesentinel.yml"
+    required: false
+    default: ""
+  offline:
+    description: "Force deterministic offline mode (no API key needed)"
+    required: false
+    default: "false"
+  anthropic-api-key:
+    description: "Anthropic API key to enable AI review (optional; offline mode otherwise)"
+    required: false
+    default: ""
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+    - name: Install CodeSentinel
+      shell: bash
+      run: pip install "codesentinel[llm] @ git+https://github.com/AravindB98/CodeSentinel.git"
+    - name: Run scan
+      shell: bash
+      env:
+        ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
+        CODESENTINEL_MOCK_LLM: ${{ inputs.offline == 'true' && '1' || '' }}
+      run: |
+        ARGS="${{ inputs.path }} --fail-on ${{ inputs.fail-on }} -f ${{ inputs.format }} -o ${{ inputs.output-file }}"
+        if [ -n "${{ inputs.config }}" ]; then ARGS="$ARGS --config ${{ inputs.config }}"; fi
+        codesentinel scan $ARGS
