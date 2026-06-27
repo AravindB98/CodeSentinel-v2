@@ -22,7 +22,7 @@ import re
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from utils.llm_client import get_llm
+from codesentinel.utils.llm_client import get_llm
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(name)s  %(message)s")
 logger = logging.getLogger(__name__)

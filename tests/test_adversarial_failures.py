@@ -24,10 +24,10 @@ import os
 
 os.environ["CODESENTINEL_MOCK_LLM"] = "1"
 
-from graph.agents.evaluator_guardian import _programmatic_check  # noqa: E402
-from graph.agents.security_sentinel import run_security_sentinel  # noqa: E402
-from graph.build_graph import build_graph  # noqa: E402
-from graph.schemas import (  # noqa: E402
+from codesentinel.graph.agents.evaluator_guardian import _programmatic_check  # noqa: E402
+from codesentinel.graph.agents.security_sentinel import run_security_sentinel  # noqa: E402
+from codesentinel.graph.build_graph import build_graph  # noqa: E402
+from codesentinel.graph.schemas import (  # noqa: E402
     Evidence,
     RagSource,
     SecurityFinding,

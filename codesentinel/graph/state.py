@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Dict, List, Optional, TypedDict
 
-from graph.schemas import (
+from codesentinel.graph.schemas import (
     EvaluatorVerdict,
     QualityFinding,
     SecurityFinding,

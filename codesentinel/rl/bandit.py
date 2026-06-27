@@ -226,7 +226,7 @@ class UCB1Bandit:
 # --- Convenience: prompt variants ---
 
 # Define the prompt variants each agent has. At integration time, each
-# agent loads the selected variant from graph/prompts/<name>.md.
+# agent loads the selected variant from codesentinel.graph/prompts/<name>.md.
 PROMPT_VARIANTS: Dict[str, Tuple[str, ...]] = {
     "security_sentinel": ("security", "security_v2", "security_strict"),
     "code_quality_auditor": ("quality", "quality_concise"),

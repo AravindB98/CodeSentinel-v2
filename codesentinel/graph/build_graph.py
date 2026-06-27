@@ -15,10 +15,10 @@ from __future__ import annotations
 import logging
 from typing import Any, Callable, Dict
 
-from graph.agents.code_quality_auditor import run_code_quality_auditor
-from graph.agents.evaluator_guardian import run_evaluator
-from graph.agents.security_sentinel import run_security_sentinel
-from graph.state import CodeSentinelState
+from codesentinel.graph.agents.code_quality_auditor import run_code_quality_auditor
+from codesentinel.graph.agents.evaluator_guardian import run_evaluator
+from codesentinel.graph.agents.security_sentinel import run_security_sentinel
+from codesentinel.graph.state import CodeSentinelState
 
 logger = logging.getLogger(__name__)
 

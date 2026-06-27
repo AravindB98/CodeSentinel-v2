@@ -29,17 +29,17 @@ _api_key = st.secrets.get("ANTHROPIC_API_KEY", "") or os.getenv("ANTHROPIC_API_K
 if _api_key:
     os.environ["ANTHROPIC_API_KEY"] = _api_key
 
-from graph.build_graph import build_graph  # noqa: E402
+from codesentinel.graph.build_graph import build_graph  # noqa: E402
 
 
 @st.cache_resource(show_spinner="Building RAG index…")
 def _ensure_rag_index():
     """Build the RAG index on first run (needed on Streamlit Cloud)."""
-    from rag.retriever import get_retriever
+    from codesentinel.rag.retriever import get_retriever
     try:
         get_retriever()
     except RuntimeError:
-        from rag.ingest import main as ingest_main
+        from codesentinel.rag.ingest import main as ingest_main
         ingest_main()
 
 

@@ -16,8 +16,32 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 
 try:
-    from pydantic import BaseModel as _PydBase, Field, field_validator
+    from pydantic import BaseModel as _PydBaseImpl
+    from pydantic import ConfigDict, Field, field_validator, model_validator
     PYDANTIC_AVAILABLE = True
+
+    class _PydBase(_PydBaseImpl):  # type: ignore
+        """Shared base that routes validation through ``_post_init``.
+
+        The field-level guarantees (fix >= 20 chars, confidence in [0, 1],
+        well-formed IDs) historically lived only in ``_post_init`` — which
+        the dataclass fallback invoked but pydantic did not. That silently
+        disabled the guarantees whenever pydantic (the real dependency) was
+        installed. This ``model_validator`` closes the gap so the contract
+        is enforced in both modes. ``pydantic.ValidationError`` subclasses
+        ``ValueError``, so callers catching ``ValueError`` keep working.
+        """
+
+        model_config = ConfigDict(validate_assignment=False, extra="ignore")
+
+        @model_validator(mode="after")
+        def _run_post_init(self):  # type: ignore[override]
+            self._post_init()
+            return self
+
+        def _post_init(self) -> None:  # overridden per-model
+            pass
+
 except ImportError:
     PYDANTIC_AVAILABLE = False
 
@@ -25,6 +49,11 @@ except ImportError:
         return default
 
     def field_validator(*args, **kwargs):  # type: ignore
+        def deco(f):
+            return f
+        return deco
+
+    def model_validator(*args, **kwargs):  # type: ignore
         def deco(f):
             return f
         return deco

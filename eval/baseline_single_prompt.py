@@ -13,8 +13,8 @@ import logging
 import re
 from typing import Dict, List
 
-from graph.schemas import Evidence, RagSource, SecurityFinding, Severity
-from utils.llm_client import get_llm
+from codesentinel.graph.schemas import Evidence, RagSource, SecurityFinding, Severity
+from codesentinel.utils.llm_client import get_llm
 
 logger = logging.getLogger(__name__)
 
@@ -99,7 +99,7 @@ def run_baseline_mock(code: str, language: str = "python") -> List[SecurityFindi
     """Mock baseline that deliberately produces some FP and misses some FN,
     modeling what a single-prompt system typically does compared to the
     grounded multi-agent pipeline."""
-    from utils.llm_client import LLMClient
+    from codesentinel.utils.llm_client import LLMClient
     # Reuse the Security Sentinel mock, but degrade quality:
     # - Sometimes flag parameterized queries as injection (false positive)
     # - Sometimes miss the pickle on request.data (false negative)

@@ -1,7 +1,7 @@
 """Tests for the RAG retrieval layer."""
 from __future__ import annotations
 
-from rag.retriever import get_retriever
+from codesentinel.rag.retriever import get_retriever
 
 
 def test_retriever_loads():

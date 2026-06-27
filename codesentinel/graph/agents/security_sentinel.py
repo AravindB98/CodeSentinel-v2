@@ -16,10 +16,10 @@ import re
 from pathlib import Path
 from typing import Dict, List
 
-from graph.schemas import Evidence, RagSource, SecurityFinding, Severity
-from graph.state import CodeSentinelState
-from rag.retriever import get_retriever
-from utils.llm_client import get_llm
+from codesentinel.graph.schemas import Evidence, RagSource, SecurityFinding, Severity
+from codesentinel.graph.state import CodeSentinelState
+from codesentinel.rag.retriever import get_retriever
+from codesentinel.utils.llm_client import get_llm
 
 logger = logging.getLogger(__name__)
 

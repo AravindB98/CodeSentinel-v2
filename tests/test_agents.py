@@ -20,13 +20,13 @@ def raises(exc_type):
         raise AssertionError(f"expected {exc_type.__name__} to be raised, nothing was raised")
 
 
-from graph.agents.code_quality_auditor import run_code_quality_auditor  # noqa: E402
-from graph.agents.evaluator_guardian import (  # noqa: E402
+from codesentinel.graph.agents.code_quality_auditor import run_code_quality_auditor  # noqa: E402
+from codesentinel.graph.agents.evaluator_guardian import (  # noqa: E402
     _programmatic_check,
     run_evaluator,
 )
-from graph.agents.security_sentinel import run_security_sentinel  # noqa: E402
-from graph.schemas import Severity  # noqa: E402
+from codesentinel.graph.agents.security_sentinel import run_security_sentinel  # noqa: E402
+from codesentinel.graph.schemas import Severity  # noqa: E402
 
 
 VULNERABLE_PY = '''import sqlite3, pickle
@@ -139,7 +139,7 @@ def test_evaluator_approves_well_formed_findings():
 
 def test_evaluator_rejects_missing_citation():
     """Manually construct a finding with no rag_source and verify rejection."""
-    from graph.schemas import Evidence, RagSource, SecurityFinding
+    from codesentinel.graph.schemas import Evidence, RagSource, SecurityFinding
 
     bad_finding = SecurityFinding(
         finding_id="SEC-001", category="Injection", cwe_id="CWE-89",
@@ -164,7 +164,7 @@ def test_evaluator_rejects_missing_citation():
 
 def test_evaluator_rejects_short_remediation():
     """Pydantic/dataclass validation should reject a finding with fix<20 chars at construction."""
-    from graph.schemas import Evidence, RagSource, SecurityFinding
+    from codesentinel.graph.schemas import Evidence, RagSource, SecurityFinding
 
     # Constructing a SecurityFinding with a fix shorter than 20 chars must raise.
     with raises(ValueError):
@@ -178,7 +178,7 @@ def test_evaluator_rejects_short_remediation():
 
 
 def test_evaluator_low_confidence_rejection():
-    from graph.schemas import Evidence, RagSource, SecurityFinding
+    from codesentinel.graph.schemas import Evidence, RagSource, SecurityFinding
 
     bad = SecurityFinding(
         finding_id="SEC-001", category="Injection", cwe_id="CWE-89", owasp_ref="A03:2025",

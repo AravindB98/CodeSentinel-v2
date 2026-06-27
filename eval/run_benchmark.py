@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from eval.baseline_single_prompt import run_baseline_dispatch
-from graph.build_graph import build_graph
+from codesentinel.graph.build_graph import build_graph
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(name)s  %(message)s")
 logger = logging.getLogger(__name__)

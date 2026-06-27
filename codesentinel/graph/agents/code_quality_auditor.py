@@ -13,9 +13,9 @@ import re
 from pathlib import Path
 from typing import Dict, List
 
-from graph.schemas import Evidence, QualityFinding, Severity
-from graph.state import CodeSentinelState
-from utils.llm_client import get_llm
+from codesentinel.graph.schemas import Evidence, QualityFinding, Severity
+from codesentinel.graph.state import CodeSentinelState
+from codesentinel.utils.llm_client import get_llm
 
 logger = logging.getLogger(__name__)
 

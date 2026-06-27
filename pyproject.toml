@@ -1,0 +1,94 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "codesentinel"
+version = "1.0.0"
+description = "Multi-agent, retrieval-augmented AI code security review with adversarial validation and provenance for every finding."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Aravind Balaji", email = "balaji.ara@northeastern.edu" }]
+keywords = ["sast", "security", "code-review", "llm", "rag", "sarif", "vulnerability", "owasp", "cwe", "ai-security"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Topic :: Security",
+    "Topic :: Software Development :: Quality Assurance",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+]
+
+# Core stays lean so it installs (and runs offline / air-gapped) anywhere.
+# Heavy or optional capabilities live behind extras below.
+dependencies = [
+    "pydantic>=2.6.0,<3.0.0",
+    "pyyaml>=6.0,<7.0",
+    "numpy>=1.26.0,<3.0.0",
+]
+
+[project.optional-dependencies]
+llm = ["anthropic>=0.40.0,<1.0.0"]
+rag = ["chromadb>=0.5.0,<1.0.0", "sentence-transformers>=2.7.0,<4.0.0", "scikit-learn>=1.4.0,<2.0.0"]
+graph = ["langgraph>=1.1.0,<2.0.0", "langchain-core>=1.3.0,<2.0.0"]
+api = ["fastapi>=0.110.0,<1.0.0", "uvicorn[standard]>=0.29.0,<1.0.0", "python-multipart>=0.0.9"]
+ui = ["streamlit>=1.38.0,<2.0.0"]
+ml = ["scikit-learn>=1.4.0,<2.0.0"]
+dev = [
+    "pytest>=8.0.0,<9.0.0",
+    "pytest-cov>=5.0.0",
+    "ruff>=0.5.0",
+    "mypy>=1.10.0",
+    "jsonschema>=4.20.0",
+    "httpx>=0.27.0",
+    "types-PyYAML",
+]
+all = [
+    "codesentinel[llm,rag,graph,api,ui]",
+]
+
+[project.scripts]
+codesentinel = "codesentinel.cli:main"
+cs = "codesentinel.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/AravindB98/CodeSentinel"
+Documentation = "https://github.com/AravindB98/CodeSentinel/tree/main/docs"
+Repository = "https://github.com/AravindB98/CodeSentinel"
+Issues = "https://github.com/AravindB98/CodeSentinel/issues"
+
+[tool.setuptools.packages.find]
+include = ["codesentinel*"]
+exclude = ["tests*", "eval*", "app*"]
+
+[tool.setuptools.package-data]
+"codesentinel.graph" = ["prompts/*.md"]
+"codesentinel.rag" = ["data/*", "data/**/*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S", "W"]
+# S101 (assert) is fine in tests; bandit-style S rules tuned for an app, not a lib consumer.
+ignore = ["E501", "B008"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S", "E501"]
+"codesentinel/utils/llm_client.py" = ["S"]
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+warn_unused_ignores = false
+no_implicit_optional = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+filterwarnings = ["ignore::DeprecationWarning"]

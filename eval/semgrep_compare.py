@@ -117,7 +117,7 @@ def run_codesentinel(files: List[Path]) -> Tuple[List[Finding], float, float]:
     Cost estimate is rough: assumes Claude Sonnet pricing at ~$3 per million
     input tokens and ~$15 per million output tokens, approximated from
     token counts in the response when available."""
-    from graph.build_graph import build_graph
+    from codesentinel.graph.build_graph import build_graph
 
     t0 = time.time()
     all_findings: List[Finding] = []

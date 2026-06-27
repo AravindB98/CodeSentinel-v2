@@ -20,13 +20,13 @@ import re
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from graph.schemas import (
+from codesentinel.graph.schemas import (
     EvaluatorVerdict,
     FindingVerdict,
     RejectionReason,
 )
-from graph.state import CodeSentinelState
-from utils.llm_client import get_llm
+from codesentinel.graph.state import CodeSentinelState
+from codesentinel.utils.llm_client import get_llm
 
 logger = logging.getLogger(__name__)
 
@@ -103,18 +103,24 @@ def _programmatic_check(state: CodeSentinelState) -> Optional[EvaluatorVerdict]:
     valid_cites = {(p["doc"], p["passage_id"]) for p in passages}
     valid_docs = {p["doc"] for p in passages}
 
-    # If no findings at all, trigger a retry so the sentinel tries harder.
+    # No findings means there is nothing to adjudicate: approve immediately.
+    #
+    # An earlier revision forced up to two sentinel retries on every empty
+    # result ("try harder"). With a deterministic detector that is wasted work,
+    # and against a real LLM it triples cost/latency on every clean file while
+    # leaving the benchmark TPR/FPR unchanged (clean code yields no findings
+    # either way). Optional recall-retry on empty results is available behind
+    # ``ScanConfig.rescan_on_empty`` (default off) for callers who want it.
     if not sec and not qual:
-        retry_count = state.get("retry_count", {}) or {}
-        if retry_count.get("security_sentinel", 0) < 2:
+        if (state.get("config_rescan_on_empty")
+                and (state.get("retry_count", {}) or {}).get("security_sentinel", 0) < 2):
             return EvaluatorVerdict(
                 overall_decision="REJECTED",
                 per_finding=[],
                 rationale=(
-                    "No security findings were produced. The code may contain vulnerabilities. "
-                    "Re-analyze it carefully and report any suspicious patterns with appropriate "
-                    "confidence. Use the best available RAG citation — do not suppress a real "
-                    "finding solely because the retrieved context is imperfect."
+                    "No findings were produced and rescan_on_empty is enabled. Re-analyze "
+                    "the code carefully and report any suspicious patterns with appropriate "
+                    "confidence, citing the best available RAG passage."
                 ),
             )
         return EvaluatorVerdict(
