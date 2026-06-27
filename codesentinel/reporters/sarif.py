@@ -13,7 +13,7 @@ the product's differentiator.
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, List
+from typing import Any
 
 from codesentinel.models import Finding, ScanResult
 
@@ -39,10 +39,10 @@ def _rule_key(f: Finding) -> str:
     return f"{f.kind}/{f.category}".replace(" ", "-")
 
 
-def _build_rules(findings: List[Finding]):
+def _build_rules(findings: list[Finding]):
     """Return (rule_descriptors, key->index map) deduped by rule identity."""
-    descriptors: List[Dict[str, Any]] = []
-    index: Dict[str, int] = {}
+    descriptors: list[dict[str, Any]] = []
+    index: dict[str, int] = {}
     for f in findings:
         key = _rule_key(f)
         if key in index:
@@ -75,8 +75,8 @@ def _build_rules(findings: List[Finding]):
     return descriptors, index
 
 
-def _result(f: Finding, rule_index: int, rule_id: str) -> Dict[str, Any]:
-    region: Dict[str, Any] = {
+def _result(f: Finding, rule_index: int, rule_id: str) -> dict[str, Any]:
+    region: dict[str, Any] = {
         "startLine": max(1, f.location.start_line),
         "endLine": max(f.location.start_line, f.location.end_line),
     }
@@ -85,7 +85,7 @@ def _result(f: Finding, rule_index: int, rule_id: str) -> Dict[str, Any]:
     msg = f.message or f.category
     if f.fix:
         msg = f"{msg}\nRemediation: {f.fix}"
-    props: Dict[str, Any] = {"confidence": f.confidence, "kind": f.kind}
+    props: dict[str, Any] = {"confidence": f.confidence, "kind": f.kind}
     if f.citation and f.citation.passage_id:
         props["provenance"] = f"{f.citation.doc}::{f.citation.passage_id}"
     if f.owasp:
@@ -106,7 +106,7 @@ def _result(f: Finding, rule_index: int, rule_id: str) -> Dict[str, Any]:
     }
 
 
-def to_sarif(result: ScanResult) -> Dict[str, Any]:
+def to_sarif(result: ScanResult) -> dict[str, Any]:
     descriptors, index = _build_rules(result.findings)
     results = [
         _result(f, index[_rule_key(f)], _rule_key(f)) for f in result.findings

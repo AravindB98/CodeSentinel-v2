@@ -18,7 +18,6 @@ import json
 import logging
 import re
 from pathlib import Path
-from typing import Dict, List, Optional
 
 from codesentinel.graph.schemas import (
     EvaluatorVerdict,
@@ -79,7 +78,7 @@ def _build_user_prompt(state: CodeSentinelState) -> str:
     return "\n".join(parts)
 
 
-def _extract_json(text: str) -> Dict:
+def _extract_json(text: str) -> dict:
     fenced = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
     if fenced:
         text = fenced.group(1)
@@ -90,7 +89,7 @@ def _extract_json(text: str) -> Dict:
     return json.loads(text[first:last + 1])
 
 
-def _programmatic_check(state: CodeSentinelState) -> Optional[EvaluatorVerdict]:
+def _programmatic_check(state: CodeSentinelState) -> EvaluatorVerdict | None:
     """Run deterministic checks that don't require the LLM.
 
     This is a belt-and-suspenders layer: even if the LLM evaluator approves
@@ -129,12 +128,12 @@ def _programmatic_check(state: CodeSentinelState) -> Optional[EvaluatorVerdict]:
             rationale="No findings to review.",
         )
 
-    verdicts: List[FindingVerdict] = []
+    verdicts: list[FindingVerdict] = []
     any_rejected = False
 
     # ---- Security findings: enforce full policy (citation + evidence + fix + confidence) ----
     for f in sec:
-        reasons: List[str] = []
+        reasons: list[str] = []
         feedback_parts = []
 
         rs = getattr(f, "rag_source", None)
@@ -180,7 +179,7 @@ def _programmatic_check(state: CodeSentinelState) -> Optional[EvaluatorVerdict]:
 
     # ---- Quality findings: no RAG citation required; enforce rationale + refactor length ----
     for f in qual:
-        reasons: List[str] = []
+        reasons: list[str] = []
         feedback_parts = []
 
         rationale = getattr(f, "rationale", "") or ""

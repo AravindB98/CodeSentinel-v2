@@ -25,7 +25,6 @@ import json
 import logging
 import re
 from pathlib import Path
-from typing import Dict, List, Tuple
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(name)s  %(message)s")
 logger = logging.getLogger(__name__)
@@ -33,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 # Independent detection rules. Intentionally simpler than the Security Sentinel
 # to keep the verifier a truly independent signal.
-DETECTORS: Dict[str, List[re.Pattern]] = {
+DETECTORS: dict[str, list[re.Pattern]] = {
     "CWE-89": [
         re.compile(r'execute\s*\(\s*f["\']'),
         re.compile(r'\.query\s*\(\s*`[^`]*\$\{'),
@@ -90,12 +89,12 @@ def detect_cwe(code: str, cwe_id: str) -> bool:
     return any(d.search(code) for d in detectors)
 
 
-def any_cwe_matches(code: str) -> List[str]:
+def any_cwe_matches(code: str) -> list[str]:
     """Return the list of CWE IDs whose detectors fire on the code."""
     return [cwe for cwe, ds in DETECTORS.items() if any(d.search(code) for d in ds)]
 
 
-def verify_sample(sample: Dict) -> Tuple[bool, str]:
+def verify_sample(sample: dict) -> tuple[bool, str]:
     """Verify one sample. Returns (passed, reason_if_failed)."""
     code = sample["code"]
     gt = sample.get("ground_truth", [])
@@ -118,7 +117,7 @@ def verify_sample(sample: Dict) -> Tuple[bool, str]:
         return True, "verified_clean"
 
 
-def verify_suite(in_path: Path, out_path: Path, rejected_path: Path) -> Dict:
+def verify_suite(in_path: Path, out_path: Path, rejected_path: Path) -> dict:
     """Verify every sample. Write passing samples to out_path, rejected to rejected_path."""
     payload = json.loads(in_path.read_text(encoding="utf-8"))
     samples = payload.get("samples", [])

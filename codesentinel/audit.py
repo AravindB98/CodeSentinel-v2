@@ -17,17 +17,17 @@ import os
 import threading
 import time
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional
+from typing import Any
 
 GENESIS = "0" * 64
 _lock = threading.Lock()
 
 
-def _canonical(entry: Dict[str, Any]) -> bytes:
+def _canonical(entry: dict[str, Any]) -> bytes:
     return json.dumps(entry, sort_keys=True, separators=(",", ":")).encode("utf-8")
 
 
-def _entry_hash(prev_hash: str, body: Dict[str, Any]) -> str:
+def _entry_hash(prev_hash: str, body: dict[str, Any]) -> str:
     h = hashlib.sha256()
     h.update(prev_hash.encode("utf-8"))
     h.update(_canonical(body))
@@ -37,7 +37,7 @@ def _entry_hash(prev_hash: str, body: Dict[str, Any]) -> str:
 class AuditLog:
     """Thread-safe, file-backed, hash-chained audit log."""
 
-    def __init__(self, path: Optional[str] = None) -> None:
+    def __init__(self, path: str | None = None) -> None:
         self.path = Path(path or os.getenv("CODESENTINEL_AUDIT_LOG", "codesentinel-audit.log"))
 
     def _last_hash(self) -> str:
@@ -54,7 +54,7 @@ class AuditLog:
                         continue
         return last
 
-    def record(self, actor: str, action: str, **details: Any) -> Dict[str, Any]:
+    def record(self, actor: str, action: str, **details: Any) -> dict[str, Any]:
         """Append an event. Returns the written record (including its hash)."""
         with _lock:
             prev = self._last_hash()
@@ -72,11 +72,11 @@ class AuditLog:
                 fh.write(json.dumps(entry, sort_keys=True) + "\n")
             return entry
 
-    def read(self, limit: Optional[int] = None,
-             tenant: Optional[str] = None) -> List[Dict[str, Any]]:
+    def read(self, limit: int | None = None,
+             tenant: str | None = None) -> list[dict[str, Any]]:
         if not self.path.exists():
             return []
-        rows: List[Dict[str, Any]] = []
+        rows: list[dict[str, Any]] = []
         with self.path.open("r", encoding="utf-8") as fh:
             for line in fh:
                 line = line.strip()
@@ -90,7 +90,7 @@ class AuditLog:
             rows = rows[-limit:]
         return rows
 
-    def verify_chain(self) -> Dict[str, Any]:
+    def verify_chain(self) -> dict[str, Any]:
         """Recompute the chain and report the first break, if any."""
         prev = GENESIS
         count = 0
@@ -104,7 +104,7 @@ class AuditLog:
         return {"valid": True, "entries": count}
 
 
-_default: Optional[AuditLog] = None
+_default: AuditLog | None = None
 
 
 def get_audit_log() -> AuditLog:

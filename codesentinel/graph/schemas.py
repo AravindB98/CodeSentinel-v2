@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import re
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 try:
     from pydantic import BaseModel as _PydBaseImpl
@@ -68,7 +68,7 @@ except ImportError:
         def _post_init(self) -> None:
             pass
 
-        def model_dump(self) -> Dict[str, Any]:
+        def model_dump(self) -> dict[str, Any]:
             out = {}
             for k, v in self.__dict__.items():
                 if k.startswith("_"):
@@ -85,7 +85,7 @@ except ImportError:
             return out
 
         @classmethod
-        def model_validate(cls, data: Dict[str, Any]):
+        def model_validate(cls, data: dict[str, Any]):
             return cls(**data)
 
 
@@ -136,7 +136,7 @@ class RagSource(_PydBase):
     if PYDANTIC_AVAILABLE:
         doc: str
         passage_id: str
-        excerpt: Optional[str] = Field(default=None, max_length=800)
+        excerpt: str | None = Field(default=None, max_length=800)
 
     def _post_init(self):
         if not getattr(self, "doc", ""):
@@ -215,8 +215,8 @@ class FindingVerdict(_PydBase):
     if PYDANTIC_AVAILABLE:
         finding_id: str
         decision: str
-        rejection_reasons: List[RejectionReason] = Field(default_factory=list)
-        feedback: Optional[str] = None
+        rejection_reasons: list[RejectionReason] = Field(default_factory=list)
+        feedback: str | None = None
 
     def _post_init(self):
         if getattr(self, "decision", None) not in ("APPROVED", "REJECTED"):
@@ -231,7 +231,7 @@ class EvaluatorVerdict(_PydBase):
     """Top-level verdict from the Evaluator Guardian."""
     if PYDANTIC_AVAILABLE:
         overall_decision: str
-        per_finding: List[FindingVerdict] = Field(default_factory=list)
+        per_finding: list[FindingVerdict] = Field(default_factory=list)
         rationale: str = ""
 
     def _post_init(self):
@@ -243,9 +243,9 @@ class EvaluatorVerdict(_PydBase):
             self.rationale = ""
 
     @property
-    def approved_ids(self) -> List[str]:
+    def approved_ids(self) -> list[str]:
         return [v.finding_id for v in self.per_finding if v.decision == "APPROVED"]
 
     @property
-    def rejected_ids(self) -> List[str]:
+    def rejected_ids(self) -> list[str]:
         return [v.finding_id for v in self.per_finding if v.decision == "REJECTED"]

@@ -7,7 +7,7 @@ reproducible. Nothing is passed implicitly between agents.
 """
 from __future__ import annotations
 
-from typing import Dict, List, Optional, TypedDict
+from typing import TypedDict
 
 from codesentinel.graph.schemas import (
     EvaluatorVerdict,
@@ -30,21 +30,21 @@ class CodeSentinelState(TypedDict, total=False):
     language: str  # "python" | "javascript" | "java" | "unknown"
 
     # --- RAG ---
-    retrieved_passages: List[RetrievedPassage]
+    retrieved_passages: list[RetrievedPassage]
 
     # --- Findings ---
-    security_findings: List[SecurityFinding]
-    quality_findings: List[QualityFinding]
+    security_findings: list[SecurityFinding]
+    quality_findings: list[QualityFinding]
 
     # --- Evaluation ---
-    evaluator_verdict: Optional[EvaluatorVerdict]
-    retry_count: Dict[str, int]  # agent_name -> retry count
-    evaluator_feedback: Optional[str]  # feedback routed back to upstream
+    evaluator_verdict: EvaluatorVerdict | None
+    retry_count: dict[str, int]  # agent_name -> retry count
+    evaluator_feedback: str | None  # feedback routed back to upstream
 
     # --- Output ---
-    final_report: Optional[str]
+    final_report: str | None
     run_id: str
 
     # --- Diagnostics ---
-    trace: List[str]  # one entry per graph transition
-    error: Optional[str]
+    trace: list[str]  # one entry per graph transition
+    error: str | None

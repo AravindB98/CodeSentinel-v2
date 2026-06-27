@@ -14,8 +14,6 @@ import json
 import logging
 import os
 import re
-from pathlib import Path
-from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -390,7 +388,7 @@ class LLMClient:
         return user
 
     @staticmethod
-    def _extract_passages(user: str) -> List[Dict[str, str]]:
+    def _extract_passages(user: str) -> list[dict[str, str]]:
         """Parse the RETRIEVED CONTEXT block. Passages are encoded as
         `[doc :: passage_id]: <text>` lines."""
         out = []
@@ -406,14 +404,14 @@ class LLMClient:
         return out
 
     @staticmethod
-    def _get_passage_excerpt(passages: List[Dict[str, str]], doc: str, pid: str) -> Optional[str]:
+    def _get_passage_excerpt(passages: list[dict[str, str]], doc: str, pid: str) -> str | None:
         for p in passages:
             if p["doc"] == doc and p["passage_id"] == pid:
                 return p["text"][:200]
         return None
 
     @staticmethod
-    def _extract_findings(user: str) -> List[Dict]:
+    def _extract_findings(user: str) -> list[dict]:
         """Parse the SECURITY FINDINGS TO REVIEW block from the evaluator prompt."""
         m = re.search(r"FINDINGS TO REVIEW\s*:?\s*```.*?\n(.*?)```", user, re.DOTALL | re.IGNORECASE)
         if m:
@@ -433,7 +431,7 @@ class LLMClient:
 
 
 # Module-level singleton
-_client: Optional[LLMClient] = None
+_client: LLMClient | None = None
 
 
 def get_llm() -> LLMClient:

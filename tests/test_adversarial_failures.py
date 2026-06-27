@@ -34,7 +34,6 @@ from codesentinel.graph.schemas import (  # noqa: E402
     Severity,
 )
 
-
 # ---------------------------------------------------------------------------
 # Failure Mode 1: The False Negative — misleading variable name
 # ---------------------------------------------------------------------------

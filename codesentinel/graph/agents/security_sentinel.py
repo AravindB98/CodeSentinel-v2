@@ -14,7 +14,6 @@ import json
 import logging
 import re
 from pathlib import Path
-from typing import Dict, List
 
 from codesentinel.graph.schemas import Evidence, RagSource, SecurityFinding, Severity
 from codesentinel.graph.state import CodeSentinelState
@@ -78,7 +77,7 @@ def _build_user_prompt(
     return "\n".join(parts)
 
 
-def _extract_json(text: str) -> Dict:
+def _extract_json(text: str) -> dict:
     """Extract a JSON object from LLM output, tolerating common formatting noise."""
     # Strip markdown fences if present
     fenced = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
@@ -92,9 +91,9 @@ def _extract_json(text: str) -> Dict:
     return json.loads(text[first:last + 1])
 
 
-def _parse_findings(raw: Dict) -> List[SecurityFinding]:
+def _parse_findings(raw: dict) -> list[SecurityFinding]:
     """Parse the findings array, dropping any that fail schema validation."""
-    findings: List[SecurityFinding] = []
+    findings: list[SecurityFinding] = []
     for i, f in enumerate(raw.get("findings", [])):
         try:
             ev_raw = f.get("evidence", {}) or {}

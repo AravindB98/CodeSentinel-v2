@@ -11,7 +11,6 @@ import json
 import logging
 import re
 from pathlib import Path
-from typing import Dict, List
 
 from codesentinel.graph.schemas import Evidence, QualityFinding, Severity
 from codesentinel.graph.state import CodeSentinelState
@@ -41,7 +40,7 @@ def _build_user_prompt(code: str, language: str, prior_feedback: str = "") -> st
     return "\n".join(parts)
 
 
-def _extract_json(text: str) -> Dict:
+def _extract_json(text: str) -> dict:
     fenced = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
     if fenced:
         text = fenced.group(1)
@@ -76,8 +75,8 @@ def _extract_json(text: str) -> Dict:
         return {"findings": findings_raw}
 
 
-def _parse_findings(raw: Dict) -> List[QualityFinding]:
-    findings: List[QualityFinding] = []
+def _parse_findings(raw: dict) -> list[QualityFinding]:
+    findings: list[QualityFinding] = []
     for i, f in enumerate(raw.get("findings", [])):
         try:
             ev_raw = f.get("evidence", {}) or {}

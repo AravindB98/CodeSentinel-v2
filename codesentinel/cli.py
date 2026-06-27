@@ -14,7 +14,6 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import List, Optional
 
 from codesentinel import __version__
 
@@ -83,8 +82,9 @@ def cmd_serve(args) -> int:
     except ImportError:
         _eprint("error: API extras not installed. Run: pip install 'codesentinel[api]'")
         return EXIT_ERROR
-    from codesentinel.api.app import create_app
     import uvicorn
+
+    from codesentinel.api.app import create_app
     host = args.host or os.getenv("CODESENTINEL_HOST", "0.0.0.0")
     port = args.port or int(os.getenv("CODESENTINEL_PORT", "8080"))
     _eprint(f"CodeSentinel API listening on http://{host}:{port}  (docs at /docs)")
@@ -93,8 +93,8 @@ def cmd_serve(args) -> int:
 
 
 def cmd_ingest(args) -> int:
-    from codesentinel.rag import ingest as _ingest
-    _ingest.main() if hasattr(_ingest, "main") else os.system("python3 -m codesentinel.rag.ingest")
+    import runpy
+    runpy.run_module("codesentinel.rag.ingest", run_name="__main__")
     return EXIT_OK
 
 
@@ -141,8 +141,7 @@ def cmd_sbom(args) -> int:
 
 
 def cmd_license(args) -> int:
-    from codesentinel.editions import (Edition, current_edition, verify_license,
-                                       EDITION_FEATURES)
+    from codesentinel.editions import EDITION_FEATURES, Edition, current_edition, verify_license
     if args.license_cmd == "info":
         token = args.token or os.getenv("CODESENTINEL_LICENSE_KEY")
         ed = current_edition(token=token)
@@ -158,7 +157,8 @@ def cmd_license(args) -> int:
     if args.license_cmd == "keygen":
         from codesentinel.editions import generate_keypair
         priv, pub = generate_keypair()
-        Path(args.private_out).write_text(priv); Path(args.public_out).write_text(pub)
+        Path(args.private_out).write_text(priv)
+        Path(args.public_out).write_text(pub)
         _eprint(f"wrote private key -> {args.private_out}, public key -> {args.public_out}")
         return EXIT_OK
     if args.license_cmd == "issue":
@@ -211,7 +211,8 @@ def build_parser() -> argparse.ArgumentParser:
     sp.set_defaults(func=cmd_scan)
 
     sp = sub.add_parser("serve", help="run the REST API service")
-    sp.add_argument("--host"); sp.add_argument("--port", type=int)
+    sp.add_argument("--host")
+    sp.add_argument("--port", type=int)
     sp.set_defaults(func=cmd_serve)
 
     sp = sub.add_parser("ingest", help="(re)build the RAG knowledge base")
@@ -232,7 +233,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     sp = sub.add_parser("license", help="license info and (vendor) issuance")
     lsub = sp.add_subparsers(dest="license_cmd", required=True)
-    li = lsub.add_parser("info"); li.add_argument("--token")
+    li = lsub.add_parser("info")
+    li.add_argument("--token")
     lk = lsub.add_parser("keygen")
     lk.add_argument("--private-out", default="codesentinel_priv.pem")
     lk.add_argument("--public-out", default="codesentinel_pub.pem")
@@ -250,7 +252,7 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     try:

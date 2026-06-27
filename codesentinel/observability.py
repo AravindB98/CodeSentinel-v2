@@ -13,7 +13,6 @@ import sys
 import threading
 import time
 import uuid
-from typing import Dict, Optional, Tuple
 
 _LATENCY_BUCKETS = (0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60)
 
@@ -22,11 +21,11 @@ def new_request_id() -> str:
     return uuid.uuid4().hex
 
 
-def _labels_key(labels: Optional[Dict[str, str]]) -> Tuple[Tuple[str, str], ...]:
+def _labels_key(labels: dict[str, str] | None) -> tuple[tuple[str, str], ...]:
     return tuple(sorted((labels or {}).items()))
 
 
-def _fmt_labels(key: Tuple[Tuple[str, str], ...]) -> str:
+def _fmt_labels(key: tuple[tuple[str, str], ...]) -> str:
     if not key:
         return ""
     inner = ",".join(f'{k}="{str(v)}"' for k, v in key)
@@ -38,15 +37,15 @@ class Metrics:
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._counters: Dict[str, Dict[Tuple, float]] = {}
-        self._hist: Dict[str, Dict[Tuple, Dict]] = {}
-        self._help: Dict[str, str] = {}
+        self._counters: dict[str, dict[tuple, float]] = {}
+        self._hist: dict[str, dict[tuple, dict]] = {}
+        self._help: dict[str, str] = {}
 
     def counter(self, name: str, help_text: str = "") -> None:
         self._help.setdefault(name, help_text)
         self._counters.setdefault(name, {})
 
-    def inc(self, name: str, labels: Optional[Dict[str, str]] = None, value: float = 1.0) -> None:
+    def inc(self, name: str, labels: dict[str, str] | None = None, value: float = 1.0) -> None:
         with self._lock:
             self._counters.setdefault(name, {})
             k = _labels_key(labels)
@@ -56,7 +55,7 @@ class Metrics:
         self._help.setdefault(name, help_text)
         self._hist.setdefault(name, {})
 
-    def observe(self, name: str, value: float, labels: Optional[Dict[str, str]] = None) -> None:
+    def observe(self, name: str, value: float, labels: dict[str, str] | None = None) -> None:
         with self._lock:
             self._hist.setdefault(name, {})
             k = _labels_key(labels)
@@ -120,7 +119,7 @@ class _JsonFormatter(logging.Formatter):
         return json.dumps(payload)
 
 
-def configure_logging(fmt: Optional[str] = None, level: str = "INFO") -> None:
+def configure_logging(fmt: str | None = None, level: str = "INFO") -> None:
     fmt = fmt or os.getenv("CODESENTINEL_LOG_FORMAT", "json")
     handler = logging.StreamHandler(sys.stdout)
     if fmt == "json":

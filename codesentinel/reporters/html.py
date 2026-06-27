@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import html
-from typing import List
 
 from codesentinel.models import Finding, ScanResult
 

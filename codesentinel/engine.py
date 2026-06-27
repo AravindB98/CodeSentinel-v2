@@ -19,7 +19,6 @@ import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Iterable, List, Optional, Set
 
 from codesentinel.config import ScanConfig, load_config, meets_threshold
 from codesentinel.editions import current_edition
@@ -39,12 +38,11 @@ def _tool_version() -> str:
 class Engine:
     """Reusable scanner. Build once; call :meth:`scan_path` / :meth:`scan_code`."""
 
-    def __init__(self, config: Optional[ScanConfig] = None) -> None:
+    def __init__(self, config: ScanConfig | None = None) -> None:
         self.config = config or load_config()
         # Honour mock/model selection before the LLM singleton is created.
         if self.config.llm.mock:
             os.environ["CODESENTINEL_MOCK_LLM"] = "1"
-        os.environ.setdefault("CODESENTINEL_MODEL", self.config.llm.model)
         from codesentinel.utils.llm_client import reset_llm
         reset_llm()
         self._graph = None  # built lazily (importing langgraph is optional)
@@ -91,7 +89,7 @@ class Engine:
         baseline = self._load_baseline()
 
         files = list(self._discover(target_path))
-        scans: List[FileScan] = []
+        scans: list[FileScan] = []
         if self.config.concurrency > 1 and len(files) > 1:
             with ThreadPoolExecutor(max_workers=self.config.concurrency) as ex:
                 futures = {
@@ -167,7 +165,7 @@ class Engine:
             return fs
 
         verdict = out.get("evaluator_verdict")
-        approved: Optional[Set[str]] = None
+        approved: set[str] | None = None
         if verdict is not None and not any(
             "circuit_breaker" in t for t in out.get("trace", [])
         ):
@@ -254,9 +252,9 @@ class Engine:
         )
 
     # ---- Aggregation, filtering, suppression ----
-    def _absorb(self, result: ScanResult, scans: List[FileScan],
-                baseline: Optional[Set[str]] = None) -> None:
-        seen: Set[str] = set()
+    def _absorb(self, result: ScanResult, scans: list[FileScan],
+                baseline: set[str] | None = None) -> None:
+        seen: set[str] = set()
         baseline = baseline or set()
         for fs in scans:
             if fs.error:
@@ -290,7 +288,7 @@ class Engine:
             return False
         return True
 
-    def _load_baseline(self) -> Set[str]:
+    def _load_baseline(self) -> set[str]:
         if not self.config.baseline:
             return set()
         bp = Path(self.config.baseline)
@@ -307,10 +305,10 @@ class Engine:
 
 
 # ---- Module-level convenience wrappers (public API) ----
-def scan_path(target: str, config: Optional[ScanConfig] = None) -> ScanResult:
+def scan_path(target: str, config: ScanConfig | None = None) -> ScanResult:
     return Engine(config).scan_path(target)
 
 
 def scan_code(code: str, language: str = "python",
-              config: Optional[ScanConfig] = None) -> ScanResult:
+              config: ScanConfig | None = None) -> ScanResult:
     return Engine(config).scan_code(code, language)

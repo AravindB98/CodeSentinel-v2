@@ -79,8 +79,25 @@ select = ["E", "F", "I", "B", "UP", "S", "W"]
 ignore = ["E501", "B008"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["S", "E501"]
+# Tests: asserts and long lines are fine; sample payloads trip S-rules.
+"tests/*" = ["S", "E501", "E702", "B007", "E402", "B904"]
+# The mock LLM mirrors vulnerable code patterns by design.
 "codesentinel/utils/llm_client.py" = ["S"]
+# The synthetic-sample generator EMITS vulnerable code on purpose.
+"codesentinel/synth/*" = ["S"]
+# RL modules use non-crypto randomness (sampling) and research-style loops.
+"codesentinel/rl/*" = ["S311", "S101", "B007"]
+# The retriever loads its own trusted, locally-built index (not untrusted input).
+"codesentinel/rag/retriever.py" = ["S301"]
+"codesentinel/rag/ingest.py" = ["S110"]
+# CS1 is a token *prefix* constant, not a secret; 0.0.0.0 bind is intentional
+# for a containerized server (operators front it with TLS/ingress).
+"codesentinel/editions.py" = ["S105"]
+"codesentinel/cli.py" = ["S104"]
+"codesentinel/audit.py" = ["S112"]
+# Schema validators re-raise as ValueError; chaining would leak internals.
+"codesentinel/graph/schemas.py" = ["B904"]
+"codesentinel/rl/policy.py" = ["B905"]
 
 [tool.mypy]
 python_version = "3.10"

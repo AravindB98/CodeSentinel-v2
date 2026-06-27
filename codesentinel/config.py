@@ -14,11 +14,12 @@ air-gapped builds.
 from __future__ import annotations
 
 import dataclasses
-import fnmatch
+import functools
 import os
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 try:  # YAML is a core dependency, but degrade gracefully if it is missing.
     import yaml
@@ -43,9 +44,46 @@ def meets_threshold(sev: str, threshold: str) -> bool:
     return severity_rank(sev) <= severity_rank(threshold)
 
 
+@functools.lru_cache(maxsize=2048)
+def _glob_to_regex(pattern: str) -> re.Pattern:
+    """Translate a gitignore-style glob (with ** support) to a compiled regex.
+
+    ``**`` matches across directory separators, ``*`` matches within a path
+    segment, ``?`` matches a single non-separator char. This fixes the common
+    pitfall where ``fnmatch`` (no ``**`` support) silently skips files at the
+    scan root because patterns like ``**/*`` only matched nested paths.
+    """
+    pat = pattern.replace(os.sep, "/")
+    out = ["(?s:"]
+    i, n = 0, len(pat)
+    while i < n:
+        if pat[i:i + 3] == "**/":
+            out.append("(?:.*/)?")
+            i += 3
+        elif pat[i:i + 2] == "**":
+            out.append(".*")
+            i += 2
+        elif pat[i] == "*":
+            out.append("[^/]*")
+            i += 1
+        elif pat[i] == "?":
+            out.append("[^/]")
+            i += 1
+        else:
+            out.append(re.escape(pat[i]))
+            i += 1
+    out.append(r")\Z")
+    return re.compile("".join(out))
+
+
+def glob_match(path: str, pattern: str) -> bool:
+    """True if a repo-relative ``path`` matches a glob ``pattern`` (** aware)."""
+    return _glob_to_regex(pattern).match(path.replace(os.sep, "/")) is not None
+
+
 # Files and directories never worth scanning. Kept conservative; users extend
 # via the ``exclude`` config key.
-DEFAULT_EXCLUDES: List[str] = [
+DEFAULT_EXCLUDES: list[str] = [
     "**/.git/**", "**/.hg/**", "**/.svn/**",
     "**/node_modules/**", "**/bower_components/**", "**/vendor/**",
     "**/.venv/**", "**/venv/**", "**/env/**", "**/__pycache__/**",
@@ -56,7 +94,7 @@ DEFAULT_EXCLUDES: List[str] = [
 ]
 
 # Extension -> language. Drives both file selection and the detector dispatch.
-DEFAULT_LANGUAGE_MAP: Dict[str, str] = {
+DEFAULT_LANGUAGE_MAP: dict[str, str] = {
     ".py": "python", ".pyi": "python",
     ".js": "javascript", ".jsx": "javascript", ".mjs": "javascript", ".cjs": "javascript",
     ".ts": "typescript", ".tsx": "typescript",
@@ -83,29 +121,29 @@ class GateConfig:
     """CI gating policy."""
     severity_threshold: str = "INFO"   # minimum severity to *report*
     fail_on: str = "HIGH"              # findings at/above this -> non-zero exit
-    max_findings: Optional[int] = None  # optional ceiling before failing
+    max_findings: int | None = None  # optional ceiling before failing
 
 
 @dataclass
 class ScanConfig:
     """Top-level scan configuration."""
     # Scope
-    include: List[str] = field(default_factory=lambda: ["**/*"])
-    exclude: List[str] = field(default_factory=lambda: list(DEFAULT_EXCLUDES))
-    language_map: Dict[str, str] = field(default_factory=lambda: dict(DEFAULT_LANGUAGE_MAP))
+    include: list[str] = field(default_factory=lambda: ["**/*"])
+    exclude: list[str] = field(default_factory=lambda: list(DEFAULT_EXCLUDES))
+    language_map: dict[str, str] = field(default_factory=lambda: dict(DEFAULT_LANGUAGE_MAP))
     max_file_bytes: int = 1_000_000    # skip files larger than this
-    max_files: Optional[int] = None    # cap total files scanned (None = no cap)
+    max_files: int | None = None    # cap total files scanned (None = no cap)
 
     # Rules
-    enabled_rules: Optional[List[str]] = None   # allow-list of rule/CWE ids (None = all)
-    disabled_rules: List[str] = field(default_factory=list)  # deny-list of rule/CWE ids
+    enabled_rules: list[str] | None = None   # allow-list of rule/CWE ids (None = all)
+    disabled_rules: list[str] = field(default_factory=list)  # deny-list of rule/CWE ids
     min_confidence: float = 0.5
 
     # Behaviour
     concurrency: int = 4
     rescan_on_empty: bool = False
     engine: str = "auto"               # "auto" | "deterministic" | "llm"
-    baseline: Optional[str] = None     # path to a baseline file of suppressed fingerprints
+    baseline: str | None = None     # path to a baseline file of suppressed fingerprints
     quality: bool = True               # run the code-quality auditor too
 
     # Sub-configs
@@ -113,18 +151,17 @@ class ScanConfig:
     gate: GateConfig = field(default_factory=GateConfig)
 
     # Licensing
-    license_key: Optional[str] = None
+    license_key: str | None = None
 
     # ---- Scope helpers ----
     def is_included(self, rel_path: str) -> bool:
-        """Match a repo-relative path against include/exclude globs."""
+        """Match a repo-relative path against include/exclude globs (** aware)."""
         rel = rel_path.replace(os.sep, "/")
-        if any(fnmatch.fnmatch(rel, pat) or fnmatch.fnmatch("/" + rel, pat)
-               for pat in self.exclude):
+        if any(glob_match(rel, pat) for pat in self.exclude):
             return False
-        return any(fnmatch.fnmatch(rel, pat) for pat in self.include)
+        return any(glob_match(rel, pat) for pat in self.include)
 
-    def language_for(self, path: str) -> Optional[str]:
+    def language_for(self, path: str) -> str | None:
         """Return the configured language for a file, or None if unsupported."""
         return self.language_map.get(Path(path).suffix.lower())
 
@@ -137,17 +174,17 @@ class ScanConfig:
             return True
         return any(e.lower() in ids_l for e in self.enabled_rules)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return dataclasses.asdict(self)
 
 
-def _coerce(dc_type, data: Dict[str, Any]):
+def _coerce(dc_type, data: dict[str, Any]):
     """Build a dataclass from a dict, ignoring unknown keys and nesting sub-configs."""
     if not isinstance(data, dict):
         return dc_type()
-    kwargs: Dict[str, Any] = {}
-    fields = {f.name: f for f in dataclasses.fields(dc_type)}
-    for name, f in fields.items():
+    kwargs: dict[str, Any] = {}
+    field_names = {f.name for f in dataclasses.fields(dc_type)}
+    for name in field_names:
         if name not in data:
             continue
         val = data[name]
@@ -160,7 +197,7 @@ def _coerce(dc_type, data: Dict[str, Any]):
     return dc_type(**kwargs)
 
 
-def find_config_file(start: Optional[str] = None) -> Optional[Path]:
+def find_config_file(start: str | None = None) -> Path | None:
     """Search ``start`` and its parents for a CodeSentinel config file."""
     cur = Path(start or os.getcwd()).resolve()
     for directory in [cur, *cur.parents]:
@@ -187,9 +224,9 @@ def _apply_env(cfg: ScanConfig) -> ScanConfig:
 
 
 def load_config(
-    path: Optional[str] = None,
-    overrides: Optional[Dict[str, Any]] = None,
-    search_from: Optional[str] = None,
+    path: str | None = None,
+    overrides: dict[str, Any] | None = None,
+    search_from: str | None = None,
 ) -> ScanConfig:
     """Resolve effective configuration.
 
@@ -199,14 +236,14 @@ def load_config(
         overrides: dict merged last (highest precedence) — typically CLI flags.
         search_from: directory to begin the upward search for a config file.
     """
-    data: Dict[str, Any] = {}
+    data: dict[str, Any] = {}
     cfg_path = Path(path) if path else find_config_file(search_from)
     if cfg_path and cfg_path.is_file():
         if not _YAML:
             raise RuntimeError(
                 f"Config file {cfg_path} found but PyYAML is not installed. "
                 "Install with `pip install pyyaml`."
-            )
+            ) from None
         loaded = yaml.safe_load(cfg_path.read_text(encoding="utf-8")) or {}
         if not isinstance(loaded, dict):
             raise ValueError(f"{cfg_path}: top-level config must be a mapping")

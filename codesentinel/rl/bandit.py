@@ -27,7 +27,6 @@ import logging
 import math
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +49,7 @@ def complexity_bucket(code: str) -> str:
     return "long"
 
 
-def infer_vuln_class(retrieved_passage_ids: List[str]) -> str:
+def infer_vuln_class(retrieved_passage_ids: list[str]) -> str:
     """Coarse classification by prefix of top retrieved passage."""
     ids_str = " ".join(retrieved_passage_ids).lower()
     if any(k in ids_str for k in ("cwe-89", "cwe-78", "cwe-94", "cwe-79", "cwe-77", "py-01",
@@ -66,7 +65,7 @@ def infer_vuln_class(retrieved_passage_ids: List[str]) -> str:
     return "other"
 
 
-def encode_context(language: str, code: str, retrieved_passage_ids: List[str]) -> str:
+def encode_context(language: str, code: str, retrieved_passage_ids: list[str]) -> str:
     lang = language if language in LANGUAGES else "unknown"
     comp = complexity_bucket(code)
     vclass = infer_vuln_class(retrieved_passage_ids)
@@ -89,11 +88,11 @@ class ArmStats:
 class BanditState:
     """Per-context, per-arm UCB-1 state."""
     # Keyed by context bucket string -> arm name -> ArmStats
-    stats: Dict[str, Dict[str, ArmStats]] = field(default_factory=dict)
+    stats: dict[str, dict[str, ArmStats]] = field(default_factory=dict)
     # Running global pull count per context (for the confidence term)
-    context_pulls: Dict[str, int] = field(default_factory=dict)
+    context_pulls: dict[str, int] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         return {
             "stats": {
                 ctx: {arm: {"pulls": s.pulls, "reward_sum": s.reward_sum}
@@ -104,7 +103,7 @@ class BanditState:
         }
 
     @classmethod
-    def from_dict(cls, d: Dict) -> "BanditState":
+    def from_dict(cls, d: dict) -> BanditState:
         state = cls()
         state.context_pulls = dict(d.get("context_pulls", {}))
         for ctx, arms in d.get("stats", {}).items():
@@ -125,11 +124,11 @@ class UCB1Bandit:
 
     def __init__(
         self,
-        arms: Tuple[str, ...],
+        arms: tuple[str, ...],
         c_initial: float = 1.414,
         c_min: float = 0.1,
         anneal_after: int = 50,
-        state_path: Optional[Path] = None,
+        state_path: Path | None = None,
     ):
         self.arms = arms
         self.c_initial = c_initial
@@ -156,7 +155,7 @@ class UCB1Bandit:
         )
 
     # ---- Core interface ----
-    def _ensure_context(self, ctx: str) -> Dict[str, ArmStats]:
+    def _ensure_context(self, ctx: str) -> dict[str, ArmStats]:
         if ctx not in self.state.stats:
             self.state.stats[ctx] = {arm: ArmStats() for arm in self.arms}
         if ctx not in self.state.context_pulls:
@@ -227,7 +226,7 @@ class UCB1Bandit:
 
 # Define the prompt variants each agent has. At integration time, each
 # agent loads the selected variant from codesentinel.graph/prompts/<name>.md.
-PROMPT_VARIANTS: Dict[str, Tuple[str, ...]] = {
+PROMPT_VARIANTS: dict[str, tuple[str, ...]] = {
     "security_sentinel": ("security", "security_v2", "security_strict"),
     "code_quality_auditor": ("quality", "quality_concise"),
     "evaluator_guardian": ("evaluator", "evaluator_strict"),

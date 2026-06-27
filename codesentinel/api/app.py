@@ -11,7 +11,6 @@ in here.
 import logging
 import time
 from collections import OrderedDict
-from typing import Dict, Optional
 
 from codesentinel import __version__
 from codesentinel.audit import get_audit_log
@@ -37,7 +36,7 @@ def create_app(config=None):
     limiter = RateLimiter()
     audit = get_audit_log()
     # tenant -> OrderedDict[scan_id, result_dict]
-    store: Dict[str, "OrderedDict[str, dict]"] = {}
+    store: dict[str, OrderedDict[str, dict]] = {}
 
     app = FastAPI(
         title="CodeSentinel API",
@@ -81,8 +80,8 @@ def create_app(config=None):
 
     # ---- Auth dependency ----
     def get_principal(
-        authorization: Optional[str] = Header(None),
-        x_api_key: Optional[str] = Header(None),
+        authorization: str | None = Header(None),
+        x_api_key: str | None = Header(None),
     ) -> Principal:
         key = x_api_key
         if not key and authorization and authorization.lower().startswith("bearer "):
@@ -107,7 +106,7 @@ def create_app(config=None):
             get_retriever().retrieve("readiness probe", k=1)
             return {"status": "ready"}
         except Exception as e:  # pragma: no cover
-            raise HTTPException(status_code=503, detail=f"not ready: {e}")
+            raise HTTPException(status_code=503, detail=f"not ready: {e}") from e
 
     @app.get("/metrics")
     def prometheus_metrics():

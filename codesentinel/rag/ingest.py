@@ -18,9 +18,7 @@ from __future__ import annotations
 import csv
 import json
 import logging
-import os
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(name)s  %(message)s")
@@ -31,7 +29,7 @@ STORE_DIR = Path(__file__).resolve().parent / "chroma_store"
 INDEX_JSON = Path(__file__).resolve().parent / "tfidf_index.json"
 
 
-def load_owasp(path: Path) -> List[Dict[str, str]]:
+def load_owasp(path: Path) -> list[dict[str, str]]:
     """Load OWASP passages. Each line: PASSAGE_ID|||TITLE|||BODY (skip comments)."""
     out = []
     for line in path.read_text(encoding="utf-8").splitlines():
@@ -50,7 +48,7 @@ def load_owasp(path: Path) -> List[Dict[str, str]]:
     return out
 
 
-def load_cwe(path: Path) -> List[Dict[str, str]]:
+def load_cwe(path: Path) -> list[dict[str, str]]:
     """Load CWE rows from CSV."""
     out = []
     with path.open(encoding="utf-8") as f:
@@ -68,7 +66,7 @@ def load_cwe(path: Path) -> List[Dict[str, str]]:
     return out
 
 
-def load_patterns(path: Path) -> List[Dict[str, str]]:
+def load_patterns(path: Path) -> list[dict[str, str]]:
     """Load language-specific patterns in same format as OWASP."""
     out = []
     for line in path.read_text(encoding="utf-8").splitlines():
@@ -88,7 +86,7 @@ def load_patterns(path: Path) -> List[Dict[str, str]]:
     return out
 
 
-def load_all() -> List[Dict[str, str]]:
+def load_all() -> list[dict[str, str]]:
     """Load all RAG corpora."""
     corpora = []
     owasp_path = DATA_DIR / "owasp_top10_2025.txt"
@@ -106,7 +104,7 @@ def load_all() -> List[Dict[str, str]]:
     return corpora
 
 
-def ingest_chroma(passages: List[Dict[str, str]]) -> bool:
+def ingest_chroma(passages: list[dict[str, str]]) -> bool:
     """Try to ingest into ChromaDB. Returns True on success."""
     try:
         import chromadb
@@ -147,14 +145,14 @@ def ingest_chroma(passages: List[Dict[str, str]]) -> bool:
         return False
 
 
-def ingest_tfidf(passages: List[Dict[str, str]]) -> bool:
+def ingest_tfidf(passages: list[dict[str, str]]) -> bool:
     """Build a TF-IDF index as a persistent JSON blob.
 
     Uses scikit-learn if available, else a manual TF-IDF implementation.
     """
     try:
+        import numpy as np  # noqa: F401
         from sklearn.feature_extraction.text import TfidfVectorizer
-        import numpy as np
 
         docs = [p["text"] for p in passages]
         vec = TfidfVectorizer(stop_words="english", ngram_range=(1, 2), max_features=5000)
@@ -175,11 +173,11 @@ def ingest_tfidf(passages: List[Dict[str, str]]) -> bool:
         logger.info("sklearn not available; using pure-python TF-IDF")
 
     # Pure-python fallback
-    from collections import Counter
     import math
     import re
+    from collections import Counter
 
-    def tokenize(s: str) -> List[str]:
+    def tokenize(s: str) -> list[str]:
         return re.findall(r"[a-z]+", s.lower())
 
     all_tokens = [tokenize(p["text"]) for p in passages]

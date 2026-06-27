@@ -25,17 +25,15 @@ import time
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Set
 
 logger = logging.getLogger(__name__)
 
 try:
     from cryptography.exceptions import InvalidSignature
+    from cryptography.hazmat.primitives import serialization
     from cryptography.hazmat.primitives.asymmetric.ed25519 import (
         Ed25519PrivateKey,
-        Ed25519PublicKey,
     )
-    from cryptography.hazmat.primitives import serialization
     _CRYPTO = True
 except Exception:  # pragma: no cover
     _CRYPTO = False
@@ -64,7 +62,7 @@ class Feature(str, Enum):
 
 
 # Feature entitlements per edition. Higher editions are supersets.
-_BASE: Set[Feature] = {Feature.SCAN, Feature.SARIF, Feature.API}
+_BASE: set[Feature] = {Feature.SCAN, Feature.SARIF, Feature.API}
 EDITION_FEATURES = {
     Edition.COMMUNITY: set(_BASE),
     Edition.TEAM: _BASE | {Feature.CUSTOM_RULES},
@@ -90,7 +88,7 @@ class LicenseInfo:
     edition: Edition
     issued: int
     expires: int            # unix seconds; 0 == perpetual
-    seats: Optional[int] = None
+    seats: int | None = None
     verified: bool = False  # True only when the Ed25519 signature checked out
 
     @property
@@ -98,7 +96,7 @@ class LicenseInfo:
         return self.expires != 0 and time.time() > self.expires
 
     @property
-    def features(self) -> Set[Feature]:
+    def features(self) -> set[Feature]:
         if not self.verified or self.expired:
             return set(EDITION_FEATURES[Edition.COMMUNITY])
         return set(EDITION_FEATURES.get(self.edition, EDITION_FEATURES[Edition.COMMUNITY]))
@@ -113,7 +111,7 @@ def _b64url_encode(b: bytes) -> str:
     return base64.urlsafe_b64encode(b).decode().rstrip("=")
 
 
-def _load_public_key(pubkey_pem: Optional[str]):
+def _load_public_key(pubkey_pem: str | None):
     """Resolve the verification key from an argument, env var, or file path."""
     if not _CRYPTO:
         return None
@@ -127,7 +125,7 @@ def _load_public_key(pubkey_pem: Optional[str]):
     return None
 
 
-def verify_license(token: str, pubkey_pem: Optional[str] = None) -> Optional[LicenseInfo]:
+def verify_license(token: str, pubkey_pem: str | None = None) -> LicenseInfo | None:
     """Parse and cryptographically verify a license token.
 
     Returns ``LicenseInfo`` with ``verified=True`` only if the Ed25519 signature
@@ -171,7 +169,7 @@ def verify_license(token: str, pubkey_pem: Optional[str] = None) -> Optional[Lic
     return LicenseInfo(verified=verified, **info_kwargs)
 
 
-def current_edition(config=None, token: Optional[str] = None) -> Edition:
+def current_edition(config=None, token: str | None = None) -> Edition:
     """Resolve the active edition from config/env. Defaults to Community."""
     tok = token
     if tok is None and config is not None:
@@ -184,11 +182,11 @@ def current_edition(config=None, token: Optional[str] = None) -> Edition:
     return Edition.COMMUNITY
 
 
-def has_feature(feature: Feature, config=None, token: Optional[str] = None) -> bool:
+def has_feature(feature: Feature, config=None, token: str | None = None) -> bool:
     return feature in EDITION_FEATURES[current_edition(config, token)]
 
 
-def require_feature(feature: Feature, config=None, token: Optional[str] = None) -> None:
+def require_feature(feature: Feature, config=None, token: str | None = None) -> None:
     """Raise :class:`LicenseError` if the active edition lacks ``feature``."""
     ed = current_edition(config, token)
     if feature not in EDITION_FEATURES[ed]:
@@ -223,7 +221,7 @@ def issue_license(  # pragma: no cover - tooling
     tenant: str,
     edition: Edition,
     valid_days: int = 365,
-    seats: Optional[int] = None,
+    seats: int | None = None,
 ) -> str:
     """Mint a signed license token (vendor-side)."""
     if not _CRYPTO:

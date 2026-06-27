@@ -17,7 +17,6 @@ import pickle
 import re
 from collections import Counter
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +59,7 @@ class RetrievedPassage:
         self.score = score
         self.title = title
 
-    def as_dict(self) -> Dict:
+    def as_dict(self) -> dict:
         return {
             "doc": self.doc,
             "passage_id": self.passage_id,
@@ -74,7 +73,7 @@ class Retriever:
     """Unified interface over ChromaDB and TF-IDF backends."""
 
     def __init__(self) -> None:
-        self.backend: Optional[str] = None
+        self.backend: str | None = None
         self._chroma_col = None
         self._sklearn_bundle = None
         self._pure_bundle = None
@@ -120,7 +119,7 @@ class Retriever:
         )
 
     # ---- Backend-specific retrieval ----
-    def _retrieve_chroma(self, query: str, k: int) -> List[RetrievedPassage]:
+    def _retrieve_chroma(self, query: str, k: int) -> list[RetrievedPassage]:
         result = self._chroma_col.query(query_texts=[query], n_results=k)
         out = []
         for i in range(len(result["ids"][0])):
@@ -135,7 +134,7 @@ class Retriever:
             ))
         return out
 
-    def _retrieve_sklearn(self, query: str, k: int) -> List[RetrievedPassage]:
+    def _retrieve_sklearn(self, query: str, k: int) -> list[RetrievedPassage]:
         b = self._sklearn_bundle
         from sklearn.metrics.pairwise import cosine_similarity
         q_vec = b["vectorizer"].transform([query])
@@ -153,7 +152,7 @@ class Retriever:
             ))
         return out
 
-    def _retrieve_pure(self, query: str, k: int) -> List[RetrievedPassage]:
+    def _retrieve_pure(self, query: str, k: int) -> list[RetrievedPassage]:
         b = self._pure_bundle
         idf = b["idf"]
         tokens = re.findall(r"[a-z]+", query.lower())
@@ -188,7 +187,7 @@ class Retriever:
         query: str,
         k: int = 8,
         rerank: bool = True,
-    ) -> List[RetrievedPassage]:
+    ) -> list[RetrievedPassage]:
         """
         Retrieve top-k passages with optional lexical rerank.
 
@@ -208,7 +207,7 @@ class Retriever:
 
         # Dedup by (doc, passage_id)
         seen = set()
-        out: List[RetrievedPassage] = []
+        out: list[RetrievedPassage] = []
         for c in candidates:
             key = (c.doc, c.passage_id)
             if key in seen:
@@ -220,15 +219,15 @@ class Retriever:
         return out
 
     def _lexical_rerank(
-        self, query: str, candidates: List[RetrievedPassage]
-    ) -> List[RetrievedPassage]:
+        self, query: str, candidates: list[RetrievedPassage]
+    ) -> list[RetrievedPassage]:
         """
         Boost candidates whose title contains rerank-keyword terms triggered
         by the query content. Boost is additive (0.0 to ~0.4) to preserve
         semantic signal but lift specific matches above generic ones.
         """
         q_lower = query.lower()
-        triggered: List[str] = []
+        triggered: list[str] = []
         for cue, boost_terms in RERANK_KEYWORDS.items():
             if cue in q_lower:
                 triggered.extend(boost_terms)
@@ -247,7 +246,7 @@ class Retriever:
 
 
 # Convenience singleton
-_retriever: Optional[Retriever] = None
+_retriever: Retriever | None = None
 
 
 def get_retriever() -> Retriever:

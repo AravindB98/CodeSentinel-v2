@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import asdict, dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from codesentinel.config import SEVERITY_ORDER, severity_rank
 
@@ -26,7 +26,7 @@ class Location:
 class Citation:
     doc: str = ""
     passage_id: str = ""
-    excerpt: Optional[str] = None
+    excerpt: str | None = None
 
 
 @dataclass
@@ -38,10 +38,10 @@ class Finding:
     confidence: float
     message: str
     location: Location
-    cwe: Optional[str] = None
-    owasp: Optional[str] = None
+    cwe: str | None = None
+    owasp: str | None = None
     fix: str = ""
-    citation: Optional[Citation] = None
+    citation: Citation | None = None
     fingerprint: str = ""
 
     def compute_fingerprint(self) -> str:
@@ -64,25 +64,25 @@ class Finding:
         if not self.fingerprint:
             self.fingerprint = self.compute_fingerprint()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
 
 @dataclass
 class FileScan:
     path: str
-    language: Optional[str] = None
-    findings: List[Finding] = field(default_factory=list)
-    error: Optional[str] = None
-    skipped: Optional[str] = None  # reason if skipped
+    language: str | None = None
+    findings: list[Finding] = field(default_factory=list)
+    error: str | None = None
+    skipped: str | None = None  # reason if skipped
 
 
 @dataclass
 class ScanResult:
-    findings: List[Finding] = field(default_factory=list)
+    findings: list[Finding] = field(default_factory=list)
     files_scanned: int = 0
     files_skipped: int = 0
-    errors: List[str] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
     tool: str = "codesentinel"
     tool_version: str = "0.0.0"
     edition: str = "community"
@@ -91,7 +91,7 @@ class ScanResult:
     suppressed: int = 0
 
     # ---- Summaries ----
-    def severity_counts(self) -> Dict[str, int]:
+    def severity_counts(self) -> dict[str, int]:
         counts = {s: 0 for s in SEVERITY_ORDER}
         for f in self.findings:
             counts[str(f.severity).upper()] = counts.get(str(f.severity).upper(), 0) + 1
@@ -101,7 +101,7 @@ class ScanResult:
         thr = severity_rank(severity)
         return sum(1 for f in self.findings if severity_rank(f.severity) <= thr)
 
-    def gate_failed(self, fail_on: str, max_findings: Optional[int] = None) -> bool:
+    def gate_failed(self, fail_on: str, max_findings: int | None = None) -> bool:
         """True if the result should fail CI under the given policy."""
         if self.count_at_or_above(fail_on) > 0:
             return True
@@ -109,7 +109,7 @@ class ScanResult:
             return True
         return False
 
-    def summary(self) -> Dict[str, Any]:
+    def summary(self) -> dict[str, Any]:
         sc = self.severity_counts()
         return {
             "total_findings": len(self.findings),
@@ -122,7 +122,7 @@ class ScanResult:
             "errors": len(self.errors),
         }
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "tool": self.tool,
             "tool_version": self.tool_version,

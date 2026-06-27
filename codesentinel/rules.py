@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
 
 # Languages that share the JS ruleset.
 JS_LANGS = {"javascript", "typescript"}
@@ -34,9 +33,9 @@ class Rule:
     rag_doc: str
     rag_pid: str
     title: str
-    requires: Optional[str] = None   # substring that must appear somewhere in the file
+    requires: str | None = None   # substring that must appear somewhere in the file
     flags: int = re.IGNORECASE
-    _rx: Optional[re.Pattern] = field(default=None, repr=False, compare=False)
+    _rx: re.Pattern | None = field(default=None, repr=False, compare=False)
 
     def compiled(self) -> re.Pattern:
         if self._rx is None:
@@ -48,7 +47,7 @@ class Rule:
             return language in JS_LANGS
         return self.language == language
 
-    def to_dict(self) -> Dict[str, str]:
+    def to_dict(self) -> dict[str, str]:
         return {
             "rule_id": self.rule_id, "language": self.language, "cwe": self.cwe,
             "owasp": self.owasp, "category": self.category, "severity": self.severity,
@@ -66,7 +65,7 @@ A07 = "A07:2025 Identification and Authentication Failures"
 A08 = "A08:2025 Software and Data Integrity Failures"
 A10 = "A10:2025 Server-Side Request Forgery"
 
-RULES: List[Rule] = [
+RULES: list[Rule] = [
     # ---------------- Python ----------------
     Rule("CS-PY-SQLI-FSTR", "python", "CWE-89", A03, "SQL Injection", "CRITICAL", 0.94,
          r'execute\s*\(\s*f["\']',
@@ -215,17 +214,17 @@ def iter_rules():
     return sorted(RULES, key=lambda r: (r.language, r.rule_id))
 
 
-def rules_for(language: str) -> List[Rule]:
+def rules_for(language: str) -> list[Rule]:
     return [r for r in RULES if r.applies_to(language)]
 
 
-def detect(code: str, language: str) -> List[dict]:
+def detect(code: str, language: str) -> list[dict]:
     """Run the deterministic ruleset over ``code`` and return finding dicts.
 
     Output shape matches the Security Sentinel's JSON contract so it can drive
     the offline/mock path and feed the same Evaluator and schemas.
     """
-    findings: List[dict] = []
+    findings: list[dict] = []
     applicable = rules_for(language)
     if not applicable:
         return findings

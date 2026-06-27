@@ -31,13 +31,12 @@ import math
 import random
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
 # Try numpy; fall back to pure python if not available
 try:
-    import numpy as np
+    import numpy as np  # noqa: F401
     HAVE_NUMPY = True
 except ImportError:
     HAVE_NUMPY = False
@@ -65,7 +64,7 @@ ROUTING_ACTIONS = (
 )
 
 
-def featurize_rejection_reasons(reasons: List[str]) -> List[float]:
+def featurize_rejection_reasons(reasons: list[str]) -> list[float]:
     """One-hot-like encoding over the fixed reason vocabulary."""
     return [1.0 if r in reasons else 0.0 for r in REJECTION_REASONS]
 
@@ -75,14 +74,14 @@ def featurize_rejection_reasons(reasons: List[str]) -> List[float]:
 @dataclass
 class PolicyState:
     # Weights: len(state) x len(actions) matrix as nested lists
-    weights: List[List[float]] = field(default_factory=list)
+    weights: list[list[float]] = field(default_factory=list)
     # Bias: len(actions) vector
-    bias: List[float] = field(default_factory=list)
+    bias: list[float] = field(default_factory=list)
     # Training history
     total_updates: int = 0
-    reward_history: List[float] = field(default_factory=list)
+    reward_history: list[float] = field(default_factory=list)
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         return {
             "weights": self.weights,
             "bias": self.bias,
@@ -91,7 +90,7 @@ class PolicyState:
         }
 
     @classmethod
-    def from_dict(cls, d: Dict) -> "PolicyState":
+    def from_dict(cls, d: dict) -> PolicyState:
         return cls(
             weights=d.get("weights", []),
             bias=d.get("bias", []),
@@ -112,7 +111,7 @@ class ReinforcePolicy:
         num_actions: int = len(ROUTING_ACTIONS),
         lr: float = 0.05,
         baseline_decay: float = 0.95,
-        state_path: Optional[Path] = None,
+        state_path: Path | None = None,
         seed: int = 0,
     ):
         self.num_features = num_features
@@ -152,7 +151,7 @@ class ReinforcePolicy:
         )
 
     # ---- Forward pass ----
-    def logits(self, features: List[float]) -> List[float]:
+    def logits(self, features: list[float]) -> list[float]:
         """Compute logits = features @ W + b."""
         out = list(self.state.bias)
         for i, fv in enumerate(features):
@@ -164,13 +163,13 @@ class ReinforcePolicy:
         return out
 
     @staticmethod
-    def softmax(logits: List[float]) -> List[float]:
+    def softmax(logits: list[float]) -> list[float]:
         m = max(logits)
         exps = [math.exp(x - m) for x in logits]
         s = sum(exps)
         return [e / s for e in exps]
 
-    def act(self, features: List[float], explore: bool = True) -> Tuple[int, List[float]]:
+    def act(self, features: list[float], explore: bool = True) -> tuple[int, list[float]]:
         """Return (action_index, probs). Samples from softmax if explore, else argmax."""
         probs = self.softmax(self.logits(features))
         if not explore:
@@ -187,10 +186,10 @@ class ReinforcePolicy:
     # ---- REINFORCE update ----
     def update(
         self,
-        features: List[float],
+        features: list[float],
         action: int,
         reward: float,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Single-step REINFORCE update with moving-average baseline.
 
         grad log pi(a|s) w.r.t. logit_j = (1 if a==j else 0) - pi(j|s)

@@ -7,7 +7,6 @@ os.environ["CODESENTINEL_MOCK_LLM"] = "1"
 
 from codesentinel.graph.build_graph import build_graph  # noqa: E402
 
-
 VULNERABLE_FLASK = '''import sqlite3, pickle
 from flask import Flask, request
 app = Flask(__name__)
@@ -85,7 +84,6 @@ def test_pipeline_final_report_includes_citations():
 
 def test_pipeline_respects_circuit_breaker():
     """If Evaluator keeps rejecting, the graph should terminate at max retries."""
-    from codesentinel.graph.agents.evaluator_guardian import _programmatic_check
     from codesentinel.graph.build_graph import MAX_RETRIES
     # Default MAX_RETRIES is 3; just verify the constant and that the
     # pipeline terminates without hanging on any input.

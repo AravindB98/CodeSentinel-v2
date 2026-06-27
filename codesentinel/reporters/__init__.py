@@ -5,8 +5,6 @@ Supported formats: ``text`` (colorized terminal), ``json``, ``sarif`` (2.1.0),
 """
 from __future__ import annotations
 
-from typing import Callable, Dict
-
 from codesentinel.models import ScanResult
 from codesentinel.reporters import html as _html
 from codesentinel.reporters import sarif as _sarif

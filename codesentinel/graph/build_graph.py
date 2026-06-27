@@ -13,7 +13,7 @@ at the semantic level.
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Dict
+from collections.abc import Callable
 
 from codesentinel.graph.agents.code_quality_auditor import run_code_quality_auditor
 from codesentinel.graph.agents.evaluator_guardian import run_evaluator
@@ -135,7 +135,7 @@ def assemble_report(state: CodeSentinelState) -> CodeSentinelState:
 
 def build_langgraph():
     """Build the production LangGraph StateGraph. Returns a compiled graph."""
-    from langgraph.graph import StateGraph, END
+    from langgraph.graph import END, StateGraph
 
     # Wrap nodes with retry counter
     sec_node = _with_retry_counter("security_sentinel", run_security_sentinel)

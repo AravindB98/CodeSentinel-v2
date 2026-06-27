@@ -20,7 +20,6 @@ import logging
 import random
 import re
 from pathlib import Path
-from typing import Dict, List, Optional
 
 from codesentinel.utils.llm_client import get_llm
 
@@ -66,7 +65,7 @@ Rules:
 
 # --- Template library for mock mode ---
 
-TEMPLATES: Dict[str, Dict[str, str]] = {
+TEMPLATES: dict[str, dict[str, str]] = {
     ("CWE-89", "python"): {
         "vulnerable": (
             "import sqlite3\n"
@@ -387,7 +386,7 @@ TEMPLATES: Dict[str, Dict[str, str]] = {
 }
 
 
-def _template_generate(cwe_id: str, language: str) -> Optional[Dict]:
+def _template_generate(cwe_id: str, language: str) -> dict | None:
     """Fetch the canned template for (cwe, language), if any."""
     tpl = TEMPLATES.get((cwe_id, language))
     if not tpl:
@@ -400,7 +399,7 @@ def _template_generate(cwe_id: str, language: str) -> Optional[Dict]:
     }
 
 
-def _llm_generate(cwe_id: str, cwe_name: str, language: str) -> Optional[Dict]:
+def _llm_generate(cwe_id: str, cwe_name: str, language: str) -> dict | None:
     """Ask the LLM to generate a sample. Returns None on failure."""
     user = (
         f"Generate a code sample for {cwe_id} ({cwe_name}) in {language}. "
@@ -420,9 +419,9 @@ def _llm_generate(cwe_id: str, cwe_name: str, language: str) -> Optional[Dict]:
         return None
 
 
-def generate_samples(count: int, seed: int = 42) -> List[Dict]:
+def generate_samples(count: int, seed: int = 42) -> list[dict]:
     rng = random.Random(seed)
-    samples: List[Dict] = []
+    samples: list[dict] = []
 
     # Expand CWE pool by repeating so we can hit `count`
     pool = TARGET_CWES.copy()

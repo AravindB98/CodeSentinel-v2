@@ -10,7 +10,7 @@ from __future__ import annotations
 import datetime as _dt
 import uuid
 from importlib import metadata
-from typing import Any, Dict, List
+from typing import Any
 
 # Declared dependency surface (core + extras) we attempt to resolve.
 _KNOWN = [
@@ -20,7 +20,7 @@ _KNOWN = [
 ]
 
 
-def _component(name: str, version: str, ctype: str = "library") -> Dict[str, Any]:
+def _component(name: str, version: str, ctype: str = "library") -> dict[str, Any]:
     return {
         "type": ctype,
         "name": name,
@@ -29,13 +29,13 @@ def _component(name: str, version: str, ctype: str = "library") -> Dict[str, Any
     }
 
 
-def generate_sbom() -> Dict[str, Any]:
+def generate_sbom() -> dict[str, Any]:
     try:
         from codesentinel import __version__ as ver
     except Exception:  # pragma: no cover
         ver = "0.0.0"
 
-    components: List[Dict[str, Any]] = []
+    components: list[dict[str, Any]] = []
     for name in _KNOWN:
         try:
             components.append(_component(name, metadata.version(name)))

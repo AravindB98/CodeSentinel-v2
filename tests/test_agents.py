@@ -28,7 +28,6 @@ from codesentinel.graph.agents.evaluator_guardian import (  # noqa: E402
 from codesentinel.graph.agents.security_sentinel import run_security_sentinel  # noqa: E402
 from codesentinel.graph.schemas import Severity  # noqa: E402
 
-
 VULNERABLE_PY = '''import sqlite3, pickle
 from flask import Flask, request
 app = Flask(__name__)

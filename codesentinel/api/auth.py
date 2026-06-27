@@ -17,7 +17,6 @@ import os
 import threading
 import time
 from dataclasses import dataclass
-from typing import Dict, Optional
 
 from codesentinel.editions import Edition, current_edition
 
@@ -31,10 +30,10 @@ class Principal:
     key_id: str
 
 
-def _load_keys() -> Dict[str, str]:
+def _load_keys() -> dict[str, str]:
     """Return {secret: tenant} from the environment."""
     raw = os.getenv("CODESENTINEL_API_KEYS", "").strip()
-    keys: Dict[str, str] = {}
+    keys: dict[str, str] = {}
     for pair in raw.split(","):
         pair = pair.strip()
         if not pair or ":" not in pair:
@@ -48,7 +47,7 @@ def _open_mode() -> bool:
     return os.getenv("CODESENTINEL_API_OPEN") == "1"
 
 
-def authenticate(api_key: Optional[str]) -> Optional[Principal]:
+def authenticate(api_key: str | None) -> Principal | None:
     """Resolve a presented key to a Principal, or None if unauthenticated."""
     keys = _load_keys()
     edition = current_edition()
@@ -73,7 +72,7 @@ class RateLimiter:
     def __init__(self, rate_per_min: int = 120, burst: int = 60) -> None:
         self.rate = rate_per_min / 60.0
         self.burst = burst
-        self._buckets: Dict[str, list] = {}
+        self._buckets: dict[str, list] = {}
         self._lock = threading.Lock()
 
     def allow(self, tenant: str) -> bool:
