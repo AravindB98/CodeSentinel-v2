@@ -1,0 +1,16 @@
+CodeSentinel
+Copyright 2026 Aravind Balaji
+
+This product includes software developed by Aravind Balaji.
+
+The architectural pattern (specialize, ground, adversarially validate) was
+developed as academic research under the supervision of Prof. Nik Bear Brown at
+Northeastern University (INFO 7375, Spring 2026).
+
+Portions of this software are licensed under the Apache License, Version 2.0
+(the "Open Core"). Certain Enterprise and Government features are licensed
+separately under a commercial license; see LICENSING.md and LICENSE-COMMERCIAL.md.
+
+This product depends on third-party open-source software; see the generated
+CycloneDX SBOM (`codesentinel sbom`) for the resolved dependency set and their
+respective licenses.
