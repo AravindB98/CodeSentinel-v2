@@ -1,7 +1,7 @@
 # Dogfooding: CodeSentinel scans its own source and reports to code scanning.
 name: Self Scan
 on:
-  push: { branches: [main] }
+  push: { branches: [main, master] }
   pull_request:
 permissions:
   contents: read

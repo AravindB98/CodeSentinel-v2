@@ -1,7 +1,7 @@
 # Defense in depth: GitHub CodeQL on the product's own code.
 name: CodeQL
 on:
-  push: { branches: [main] }
+  push: { branches: [main, master] }
   pull_request:
   schedule:
     - cron: "27 4 * * 1"
