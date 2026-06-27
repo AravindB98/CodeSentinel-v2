@@ -19,7 +19,7 @@ from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_MODEL = "claude-sonnet-4-5"
+DEFAULT_MODEL = os.getenv("CODESENTINEL_MODEL", "claude-sonnet-4-5")
 
 
 class LLMClient:
@@ -441,3 +441,9 @@ def get_llm() -> LLMClient:
     if _client is None:
         _client = LLMClient()
     return _client
+
+
+def reset_llm() -> None:
+    """Drop the cached client so the next get_llm() re-reads env (mode/model)."""
+    global _client
+    _client = None

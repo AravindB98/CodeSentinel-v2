@@ -34,3 +34,31 @@ JAVA-02|||Java ObjectInputStream on Untrusted Input|||java|||new ObjectInputStre
 JAVA-03|||Java Runtime.exec with String|||java|||Runtime.getRuntime().exec(userString) tokenizes on whitespace and is vulnerable to injection if user input is embedded. Use ProcessBuilder with an explicit argument list. CWE-78.
 
 JAVA-04|||Java XXE in Default XML Parsers|||java|||DocumentBuilderFactory and SAXParserFactory in their default configuration allow external entities, enabling XXE attacks. Explicitly disable: factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true). CWE-611.
+
+PY-09|||Python Flask Debug Mode in Production|||python|||app.run(debug=True) enables the Werkzeug interactive debugger, which exposes a PIN-protected console that can execute arbitrary Python in the server process. Never enable debug mode in production; gate it behind an environment variable that is false by default. CWE-489.
+
+JS-06|||JavaScript Prototype Pollution via Object.assign|||javascript|||Object.assign({}, req.body) or recursive merges of untrusted JSON can write to __proto__ and pollute Object.prototype, leading to denial of service or remote code execution downstream. Validate and allow-list keys, reject __proto__/constructor/prototype, or use a null-prototype object. CWE-1321.
+
+JS-07|||JavaScript Hardcoded Secret|||javascript|||A literal apiKey, token, secret, or password assigned in source (including front-end bundles) is a credential leak. Load from environment variables or a secrets manager and rotate anything committed. CWE-798.
+
+GO-01|||Go SQL Injection via Sprintf|||go|||db.Query(fmt.Sprintf("SELECT * FROM t WHERE id = %s", id)) or string concatenation in a query is SQL injection. Use parameterized queries with placeholders: db.Query("SELECT * FROM t WHERE id = $1", id). CWE-89.
+
+GO-02|||Go Command Injection via exec.Command shell|||go|||exec.Command("sh", "-c", userInput) or exec.Command("bash", ...) runs input through a shell. Invoke the target binary directly with explicit arguments and never pass a shell. CWE-78.
+
+GO-03|||Go TLS InsecureSkipVerify|||go|||tls.Config{InsecureSkipVerify: true} disables certificate validation and enables man-in-the-middle attacks. Never set it in production; configure a proper RootCAs pool if a custom CA is required. CWE-295.
+
+GO-04|||Go Weak Hash MD5 or SHA1|||go|||md5.New() or sha1.New() for passwords, tokens, or integrity in a security context is a broken algorithm choice. Use crypto/sha256 or stronger; for passwords use bcrypt or argon2. CWE-327.
+
+RB-01|||Ruby Command Injection via Interpolation|||ruby|||system("cmd #{params[:x]}"), backticks, %x(), and exec with interpolated user input are OS command injection. Pass arguments as an array (system("cmd", arg)) and never interpolate untrusted input into a shell string. CWE-78.
+
+RB-02|||Ruby eval on Untrusted Input|||ruby|||eval, instance_eval, class_eval, and send with user-controlled strings are code injection. Replace with explicit dispatch over an allow-list of permitted methods. CWE-94.
+
+RB-03|||Ruby YAML.load Deserialization|||ruby|||YAML.load(user_input) can instantiate arbitrary Ruby objects and lead to remote code execution. Use YAML.safe_load with an explicit permitted-classes list. CWE-502.
+
+PHP-01|||PHP SQL Injection from Superglobal|||php|||mysqli_query($c, "... " . $_GET['id']) or any query built from $_GET/$_POST/$_REQUEST is SQL injection. Use prepared statements with bound parameters via PDO or mysqli. CWE-89.
+
+PHP-02|||PHP Command Injection from Request|||php|||system, exec, shell_exec, passthru, and popen called with $_GET/$_POST data are OS command injection. Avoid shells; if unavoidable, use escapeshellarg on every argument. CWE-78.
+
+PHP-03|||PHP eval on Dynamic Input|||php|||eval($userControlled) executes arbitrary PHP. There is no safe way to eval untrusted input; restructure the logic to avoid it. CWE-94.
+
+PHP-04|||PHP File Inclusion from Request|||php|||include/require with a path from $_GET/$_POST enables local and remote file inclusion and code execution. Use a fixed allow-list mapping request values to known file paths. CWE-98.
