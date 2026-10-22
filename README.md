@@ -1,6 +1,6 @@
 # CodeSentinel v2
 
-> AI code security review that refuses to hallucinate. Three specialized agents, a cited knowledge base, and an adversarial reviewer that rejects any finding it cannot prove. **Same model, same prompts, different architecture: 97% fewer false positives.** v2 turns the original research prototype into a deployable, open-core product: CLI, REST API, SARIF, Docker, Helm, and a fully offline rule engine.
+> AI code security review that refuses to hallucinate. Three specialized agents, a cited knowledge base, and an adversarial reviewer that rejects any finding it cannot prove. **Same model, same prompts, different architecture: in the one real-model run on record, 30 false positives became 1.** v2 turns the original research prototype into a deployable, open-core product: CLI, REST API, SARIF, Docker, Helm, and a fully offline rule engine.
 
 [![Website](https://img.shields.io/badge/website-github%20pages-d97706?style=flat-square&logo=github)](https://aravindb98.github.io/CodeSentinel-v2/)
 [![Live Demo](https://img.shields.io/badge/demo-streamlit-c2410c?style=flat-square&logo=streamlit)](https://codesentinel-f2ggdvqeuwsj4pta5sk27s.streamlit.app)
@@ -41,7 +41,7 @@
 
 Imagine you built a giant LEGO castle, and you want to know if any part of it is wobbly before your little brother runs into it.
 
-**The old way (one AI, one prompt).** You ask one friend to look at the castle. This friend really wants to be helpful, so he points at lots of things and says "that's broken!" even when it isn't. Out of every 31 things he points at, 30 are fine. After a while you stop listening to him, and then you miss the one wobbly piece that mattered.
+**The old way (one AI, one prompt).** You ask one friend to look at the castle. This friend really wants to be helpful, so he points at lots of things and says "that's broken!" even when it isn't. In our test, he pointed at 38 things and 30 of them were fine. After a while you stop listening to him, and then you miss the one wobbly piece that mattered.
 
 **The CodeSentinel way.** You ask three friends, and each one has exactly one job:
 
@@ -84,7 +84,7 @@ The design principle is *specialize, ground, adversarially validate*. The gain c
 
 Both versions share the same core idea and the same three-agent pipeline. The difference is what surrounds it.
 
-- **v1** is the research prototype, built for INFO 7375 (Prompt Engineering and Generative AI) at Northeastern University in Spring 2026 under Prof. Nik Bear Brown. Its job was to answer a research question: does a multi-agent, citation-enforced architecture reduce hallucinated findings compared with a single prompt? It answered yes, with a measured 97% reduction. It reviews one code snippet at a time through a Streamlit page or a benchmark script.
+- **v1** is the research prototype, built for INFO 7375 (Prompt Engineering and Generative AI) at Northeastern University in Spring 2026 under Prof. Nik Bear Brown. Its job was to answer a research question: does a multi-agent, citation-enforced architecture reduce hallucinated findings compared with a single prompt? It answered yes on a small suite (see [The headline number](#the-headline-number) for exactly what was measured). It reviews one code snippet at a time through a Streamlit page or a benchmark script.
 - **v2** is the product built on top of that result (June 2026). Its job is to be something a security team can install, run on a real repository, wire into CI, and deploy on their own infrastructure, including networks with no internet access.
 
 > **A note on version numbers.** "v2" is the generation of the project. The installable package inside this repository is versioned **1.0.0** because it is the first production release, so `codesentinel version` prints `CodeSentinel 1.0.0`. Separately, `docs/ARCHITECTURE.md` uses "v1" and "v2" for two revisions of the technical report. In this README, v1 always means the research prototype and v2 always means this repository.
@@ -115,7 +115,7 @@ Both versions share the same core idea and the same three-agent pipeline. The di
 
 ### What stayed the same
 
-The research core is untouched, on purpose. v2 still has the same three agents, the same prompts, the same citation-required policy, the same retry loop with a circuit breaker, and the same benchmark harness and committed results. The 97% figure was measured on the v1 pipeline in April 2026 and was not re-run for v2. In mock mode the v2 benchmark reproduces the v1 behavior exactly.
+The research core is untouched, on purpose. v2 still has the same three agents, the same prompts, the same citation-required policy, the same retry loop with a circuit breaker, and the same benchmark harness and committed results. The real-model result below was measured on the v1 pipeline in April 2026 and has not been re-run on v2. In mock mode the v2 benchmark reproduces the v1 behavior exactly.
 
 ### Bugs v2 fixed along the way
 
@@ -130,19 +130,27 @@ Use **v2**. It contains everything v1 does. Go back to the v1 snapshot only if y
 
 ## The headline number
 
-| System | TPR | FPR | False positives | CWE accuracy |
+| System | TPR | False discovery rate | False positives | CWE accuracy |
 |---|---|---|---|---|
 | Single-prompt baseline | 1.000 | 0.789 | **30** | 1.000 |
 | Multi-agent CodeSentinel | 1.000 | 0.111 | **1** | 1.000 |
-| **Change** | 0.000 | **-0.678** | **-29 (-97%)** | 0.000 |
+| **Change** | 0.000 | **-0.678** | **-29** | 0.000 |
 
-How to read this: both systems found every real vulnerability (TPR 1.000). The single prompt also reported 30 that did not exist. CodeSentinel reported 1.
+How to read this: both systems found all 8 real vulnerabilities (TPR 1.000). The single prompt also reported 30 findings that did not exist. CodeSentinel reported 1. The third column is false positives divided by all reported findings (FP / (FP + TP)); the benchmark script labels it "FPR", but it is a false discovery rate, since the suite has no count of true negatives.
 
-- **Setup:** real Claude Sonnet, 10 hand-labeled samples, April 20, 2026. Same model, same prompts, same samples for both systems, so the difference is attributable to the architecture. Raw output is in [`eval/results/20260420_143220/`](./eval/results/20260420_143220/).
-- **Second suite:** on a 20-sample paired suite in the style of the OWASP Benchmark, the multi-agent pipeline reached TPR 1.000 against the baseline's 0.333, with FPR 0.182 against 0.571. McNemar's exact test gives **p = 0.0312** (significant at 0.05). Youden index: +0.818 against -0.238.
-- **Semgrep comparison:** a comparison against Semgrep on Flask's production source, with manual adjudication, is in [`eval/results/semgrep_comparison/`](./eval/results/semgrep_comparison/).
+### Exactly what was measured, and what was not
 
-These are small suites. See [Honest limitations](#honest-limitations).
+This section was corrected on October 22, 2026 after re-reading the committed results in [`eval/results/`](./eval/results/). Earlier versions of this README overstated the evidence. Everything below can be checked against those files.
+
+- **The 30 → 1 table is a single run.** Real Claude Sonnet, the 10-sample toy suite (8 Python, 2 JavaScript), April 20, 2026, in [`eval/results/20260420_143220/`](./eval/results/20260420_143220/). It has not been repeated. McNemar's test on this run is not applicable: both systems caught every ground-truth finding, so there are zero discordant pairs.
+- **Two earlier real-model runs that afternoon returned nothing.** [`20260420_135336`](./eval/results/20260420_135336/) and [`20260420_141023`](./eval/results/20260420_141023/) show the multi-agent pipeline producing zero findings (TP 0, FN 8) against 31 and 32 baseline false positives. The cause is known and is in the git history: commit `47306a4` ("Fix 7 bugs causing multi-agent pipeline to produce zero security findings") landed at 14:53 that day and fixed a LangGraph state bug that handed agents an empty dict, plus a corrupted TF-IDF index that returned no relevant passages. The 14:32 run is the first after those fixes. Those two runs are kept in the repository on purpose.
+- **The p = 0.0312 result is from a different suite and a different mode.** It comes from the 20-sample, all-Python paired suite in [`eval/results/paired_suite_20sample/`](./eval/results/paired_suite_20sample/). That run took 0.18 seconds per sample, which means it was the deterministic mock LLM, not Claude. On that suite the effect is recall (TPR 0.333 → 1.000, six discordant pairs); false positives went from 4 to 2, a 50% reduction, not 97%. The p-value therefore does not support the 30 → 1 table, and the two numbers should not be quoted together.
+- **No 97% claim appears in this README any more.** 30 → 1 on one run of 10 samples is the honest statement.
+- **Five of the seven languages have never been benchmarked on the LLM path.** The committed suites contain only Python and JavaScript (and a synthetic suite with Java). TypeScript, Go, Ruby and PHP are covered by the offline rule engine and its unit tests only.
+- **The Semgrep comparison is empty.** [`eval/results/semgrep_comparison/`](./eval/results/semgrep_comparison/) records zero findings for both tools on the target and was never adjudicated. It should not be cited as evidence either way.
+- **The summary writer has a bug.** `eval/run_benchmark.py` prints "direction favors baseline" for one run and "favors multi-agent" for another with identical numbers (compare the two zero-finding runs). The direction line in `summary.md` files should not be trusted until that is fixed.
+
+The technical report (section 10.4) describes the result as suggestive, which is the right word. A proper re-run of both suites, several times, with the metric relabelled, is the next evaluation task; see [Reproduce the benchmark](#reproduce-the-benchmark).
 
 ---
 
@@ -443,10 +451,10 @@ make ingest
 make benchmark                                  # deterministic mock mode, no key, free
 make benchmark-paired                           # 20-sample paired suite
 ANTHROPIC_API_KEY=sk-ant-... make benchmark     # real Claude Sonnet, roughly $2 for the toy suite
-make semgrep-compare                            # comparison against Semgrep
+make semgrep-compare                            # comparison against Semgrep (currently returns no findings)
 ```
 
-Datasets are in [`eval/datasets/`](./eval/datasets/) and every committed run, with per-sample output, is in [`eval/results/`](./eval/results/).
+Datasets are in [`eval/datasets/`](./eval/datasets/) and every committed run, with per-sample output, is in [`eval/results/`](./eval/results/). Mock-mode runs finish in well under a second per sample; real-model runs take tens of seconds per sample, so `elapsed_sec` in `multi_per_sample.json` tells you which mode produced a result.
 
 ---
 
@@ -484,8 +492,8 @@ Dockerfile · docker-compose.yml · action.yml · Makefile · pyproject.toml
 
 ## Honest limitations
 
-- **The evaluation is small.** The 97% result comes from 10 hand-labeled samples and the significance test from 20. It is evidence that the architecture works, not a claim about performance on arbitrary production code.
-- **The 97% was measured on v1.** The v2 pipeline uses the same agents and prompts, but the real-model benchmark has not been re-run since productization.
+- **The evaluation is small and partly single-run.** The 30 → 1 result is one real-model run of 10 hand-labeled samples; the significance test comes from a 20-sample mock-mode run on a different suite. See [The headline number](#the-headline-number) for the full accounting. It is evidence that the architecture is worth testing properly, not a claim about performance on arbitrary production code.
+- **The real-model result was measured on v1.** The v2 pipeline uses the same agents and prompts, but the real-model benchmark has not been re-run since productization.
 - **The offline engine is pattern matching.** Regex rules cannot reason about data flow or reachability. They miss vulnerabilities that span functions and can flag safe code that looks similar to unsafe code.
 - **AI mode costs money and sends code to a model provider.** Use offline mode where that is not acceptable.
 - **Some product pieces are scaffolding.** Pricing is indicative, the commercial license needs legal review, and contact addresses in `SECURITY.md`, `LICENSING.md`, and `docs/` are placeholders.
