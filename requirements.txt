@@ -17,7 +17,7 @@ sentence-transformers>=2.7.0,<4.0.0
 
 # --- Fallback retrieval path (also used for RL components) ---
 scikit-learn>=1.4.0,<2.0.0
-numpy>=1.26.0,<3.0.0
+numpy>=2.2.6,<3.0.0
 
 # --- UI ---
 streamlit>=1.38.0,<2.0.0
