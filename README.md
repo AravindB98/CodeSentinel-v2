@@ -1,108 +1,183 @@
-# CodeSentinel
+# CodeSentinel v2
 
-> Multi-agent, retrieval-augmented AI code security review. **Same model, same prompts, different architecture: 97% fewer hallucinated findings.** Now a deployable, open-core product: CLI, REST API, SARIF, Docker, and Helm — air-gapped or AI-assisted.
+> AI code security review that refuses to hallucinate. Three specialized agents, a cited knowledge base, and an adversarial reviewer that rejects any finding it cannot prove. **Same model, same prompts, different architecture: in the one real-model run on record, 30 false positives became 1.** v2 turns the original research prototype into a deployable, open-core product: CLI, REST API, SARIF, Docker, Helm, and a fully offline rule engine.
 
-[![CI](https://img.shields.io/badge/CI-passing-5a7a1a?style=flat-square)](.github/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-35%2F35%20passing-5a7a1a?style=flat-square)](./tests/)
+[![Website](https://img.shields.io/badge/website-github%20pages-d97706?style=flat-square&logo=github)](https://aravindb98.github.io/CodeSentinel-v2/)
+[![Live Demo](https://img.shields.io/badge/demo-streamlit-c2410c?style=flat-square&logo=streamlit)](https://codesentinel-f2ggdvqeuwsj4pta5sk27s.streamlit.app)
+[![Video](https://img.shields.io/badge/video-youtube%20(7%20min)-c2410c?style=flat-square&logo=youtube)](https://youtu.be/do8GvAK7tHI)
+[![Report](https://img.shields.io/badge/report-PDF%20(46%20pages)-d97706?style=flat-square)](./docs/CodeSentinel_Technical_Report.pdf)
+[![Tests](https://img.shields.io/badge/tests-67%20passing-5a7a1a?style=flat-square)](./tests/)
 [![SARIF](https://img.shields.io/badge/output-SARIF%202.1.0-d97706?style=flat-square)](./docs/API.md)
 [![License](https://img.shields.io/badge/core-Apache--2.0-grey?style=flat-square)](./LICENSE)
 [![Edition](https://img.shields.io/badge/model-open--core-c2410c?style=flat-square)](./LICENSING.md)
-[![Live Demo](https://img.shields.io/badge/demo-streamlit-c2410c?style=flat-square&logo=streamlit)](https://codesentinel-f2ggdvqeuwsj4pta5sk27s.streamlit.app)
-[![Report](https://img.shields.io/badge/report-PDF%20(46%20pages)-d97706?style=flat-square)](./docs/CodeSentinel_Technical_Report.pdf)
 
-CodeSentinel finds real vulnerabilities, not false alarms — and gives auditors a
-citation for every one. It pairs a **deterministic rule engine** (32 rules across 7
-languages, fully offline) with a **multi-agent AI pipeline** that grounds every
-claim in a knowledge base and runs an adversarial reviewer over each finding before
-a human sees it.
+**Author:** Aravind Balaji · M.S. Information Systems · Northeastern University · balaji.ara@northeastern.edu
 
 ---
 
-## Why it's different
+## Contents
 
-Naive single-prompt LLM code review fails three ways: findings are **ungrounded**
-(invented bugs), output is **monolithic** (nothing challenges a claim), and errors
-are **untraceable**. CodeSentinel fixes all three **architecturally**:
+1. [Explain it like I'm five](#explain-it-like-im-five)
+2. [What is CodeSentinel](#what-is-codesentinel)
+3. [CodeSentinel v1 vs v2](#codesentinel-v1-vs-v2)
+4. [The headline number](#the-headline-number)
+5. [How it works](#how-it-works)
+6. [Quick start](#quick-start)
+7. [Using the CLI](#using-the-cli)
+8. [Running it as a service](#running-it-as-a-service)
+9. [CI/CD integration](#cicd-integration)
+10. [Configuration](#configuration)
+11. [Detection coverage](#detection-coverage)
+12. [Editions and licensing](#editions-and-licensing)
+13. [Reproduce the benchmark](#reproduce-the-benchmark)
+14. [For researchers](#for-researchers)
+15. [Repository structure](#repository-structure)
+16. [Honest limitations](#honest-limitations)
+17. [Documentation and links](#documentation-and-links)
+18. [Credits and license](#credits-and-license)
 
-- **Specialize** — three narrow agents (Security Sentinel · Quality Auditor ·
-  Evaluator Guardian), not one model doing everything.
-- **Ground** — every security claim must cite a passage from a 70-passage corpus
-  (OWASP Top 10 2025 · CWE · language patterns). Uncited findings are rejected
-  programmatically.
-- **Adversarially validate** — a dedicated Evaluator runs programmatic + semantic
-  checks on every finding and reroutes rejects upstream, bounded by a circuit
-  breaker.
+---
 
-### The headline number
+## Explain it like I'm five
 
-| System | TPR | FPR | False positives | CWE accuracy |
+Imagine you built a giant LEGO castle, and you want to know if any part of it is wobbly before your little brother runs into it.
+
+**The old way (one AI, one prompt).** You ask one friend to look at the castle. This friend really wants to be helpful, so he points at lots of things and says "that's broken!" even when it isn't. In our test, he pointed at 38 things and 30 of them were fine. After a while you stop listening to him, and then you miss the one wobbly piece that mattered.
+
+**The CodeSentinel way.** You ask three friends, and each one has exactly one job:
+
+- **The Detective** (Security Sentinel) looks for wobbly pieces. But there is a rule: every time she says "this is wobbly," she has to open the big LEGO rule book and point to the page that says why. No page, no complaint.
+- **The Tidy Friend** (Quality Auditor) does not look for danger. He looks for mess: pieces that are confusing or hard to fix later.
+- **The Judge** (Evaluator Guardian) does not look at the castle at all. She only checks the Detective's work. "Show me the page. Does that page really say this? Did you explain how to fix it?" If the answer is no, she sends the Detective back to try again. After three tries she says "enough" and the complaint is thrown away.
+
+Only the complaints the Judge agrees with reach you. So when CodeSentinel says "this piece is wobbly," it is almost always true, and it comes with the page from the rule book and instructions to fix it.
+
+**And what is v2?** Version 1 was a science fair project: it proved the three-friends idea works. Version 2 packs those friends into a toolbox anyone can carry to their own castle. It also adds a fourth helper, a checklist robot that knows 32 common mistakes by heart and needs no internet at all, so it can work even inside a locked room.
+
+| In the story | In the real system |
+|---|---|
+| LEGO castle | Your source code |
+| Wobbly piece | A security vulnerability (SQL injection, unsafe deserialization, and so on) |
+| The rule book | A 70-passage knowledge base built from OWASP Top 10 2025, CWE, and language patterns |
+| Pointing to the page | A citation attached to every finding (RAG grounding) |
+| The Judge sending work back | The Evaluator Guardian's reject and retry loop, capped at 3 retries |
+| The checklist robot | The deterministic 32-rule offline engine added in v2 |
+
+---
+
+## What is CodeSentinel
+
+CodeSentinel is a code security review system. You point it at a file or a repository and it reports vulnerabilities, each with a CWE identifier, an OWASP Top 10 2025 category, a severity, a confidence score, a concrete fix, and the exact knowledge base passage that justifies the claim.
+
+It exists because a single prompt to an LLM is a poor code reviewer in three specific ways:
+
+| Failure of single-prompt review | What it looks like | How CodeSentinel closes it |
+|---|---|---|
+| **Ungrounded findings** | The model invents plausible vulnerabilities that are not in the code | **Ground:** every security claim must cite a retrieved passage. Findings without a valid citation are rejected in code, not by asking the model nicely |
+| **Monolithic output** | Nothing challenges a claim, so false positives pass through as easily as true ones | **Adversarially validate:** a separate Evaluator agent audits every finding and can send it back |
+| **Untraceable errors** | No record of what the model knew or why it concluded something | **Specialize and record:** narrow agents with typed inputs and outputs, explicit graph state, and provenance on each finding |
+
+The design principle is *specialize, ground, adversarially validate*. The gain comes from the architecture, not from a cleverer prompt, which means it carries over when the underlying model is swapped for a stronger one.
+
+### At a glance
+
+- **Two engines, one tool.** Deterministic rules for offline and air-gapped use with no API key, and the multi-agent AI pipeline when a model is available. Pick per environment.
+- **7 languages:** Python, JavaScript, TypeScript, Java, Go, Ruby, PHP.
+- **Provenance on every finding:** CWE, OWASP 2025 category, a concrete fix, and the exact knowledge base passage that grounds it.
+- **Outputs that fit your stack:** SARIF 2.1.0, JSON, Markdown, standalone HTML, terminal text.
+- **Service-ready:** FastAPI with API-key auth, tenant isolation, rate limiting, Prometheus metrics, structured logs, health and readiness probes.
+- **Deploy anywhere:** non-root container, hardened Helm chart, GitHub Action; on-prem, Kubernetes, SaaS, or fully air-gapped.
+- **Enterprise and government controls:** SSO, tamper-evident audit log, compliance packs, offline Ed25519 licensing, CycloneDX SBOM.
+
+---
+
+## CodeSentinel v1 vs v2
+
+Both versions share the same core idea and the same three-agent pipeline. The difference is what surrounds it.
+
+- **v1** is the research prototype, built for INFO 7375 (Prompt Engineering and Generative AI) at Northeastern University in Spring 2026 under Prof. Nik Bear Brown. Its job was to answer a research question: does a multi-agent, citation-enforced architecture reduce hallucinated findings compared with a single prompt? It answered yes on a small suite (see [The headline number](#the-headline-number) for exactly what was measured). It reviews one code snippet at a time through a Streamlit page or a benchmark script.
+- **v2** is the product built on top of that result (June 2026). Its job is to be something a security team can install, run on a real repository, wire into CI, and deploy on their own infrastructure, including networks with no internet access.
+
+> **A note on version numbers.** "v2" is the generation of the project. The installable package inside this repository is versioned **1.0.0** because it is the first production release, so `codesentinel version` prints `CodeSentinel 1.0.0`. Separately, `docs/ARCHITECTURE.md` uses "v1" and "v2" for two revisions of the technical report. In this README, v1 always means the research prototype and v2 always means this repository.
+
+### Side by side
+
+| | **v1: research prototype** | **v2: this repository** |
+|---|---|---|
+| Purpose | Prove the architecture reduces hallucinations | Ship that architecture as a usable product |
+| Date | April 2026 | June 2026 (package 1.0.0) |
+| How you use it | `make benchmark`, Streamlit UI | `codesentinel` CLI, REST API, GitHub Action, Docker, Helm, Streamlit UI |
+| What it reviews | One pasted snippet at a time | Whole files and repositories: file discovery, include/exclude globs, size caps, parallel workers, deduplication |
+| Detection engines | Multi-agent LLM pipeline only (plus a mock LLM for tests) | Two engines: the multi-agent LLM pipeline **and** a deterministic 32-rule engine that runs fully offline |
+| Languages | Python, JavaScript, Java | Python, JavaScript, TypeScript, Java, Go, Ruby, PHP |
+| Knowledge base | 56 passages | 70 passages (OWASP Top 10 2025, CWE subset, language patterns) |
+| Output | Console text and benchmark summaries | SARIF 2.1.0, JSON, Markdown, standalone HTML, colored terminal text |
+| CI gating | None | `--fail-on` severity gate with exit codes, baseline files to suppress pre-existing findings |
+| Configuration | Environment variables | `.codesentinel.yml`, environment variables, and CLI overrides |
+| Service mode | None | FastAPI service with API-key auth, tenant isolation, rate limiting, security headers, body-size limits, health and readiness probes |
+| Observability | Logs | Prometheus metrics, structured JSON logs, tamper-evident hash-chained audit log |
+| Supply chain | None | CycloneDX 1.5 SBOM generation, CodeQL, Dependabot, self-scan workflow |
+| Deployment | Clone and run locally | Non-root multi-stage Docker image, Docker Compose, hardened Helm chart, air-gapped operation |
+| Code layout | Top-level `graph/`, `rag/`, `rl/`, `synth/`, `utils/` folders | One installable `codesentinel` package with optional extras (`llm`, `rag`, `graph`, `api`, `ui`) |
+| Size | About 5,000 lines of Python | About 7,900 lines of Python |
+| Tests | 35 | 67 (pass with or without the optional dependencies) |
+| License | MIT | Open core: Apache-2.0 core (adds a patent grant) plus a commercial license for Enterprise and Government features, enforced by offline Ed25519 license keys |
+| Documentation | README, architecture doc, 46-page technical report | All of v1's, plus deployment, admin, API, compliance mapping, threat model, security policy, pricing, and solution brief |
+
+### What stayed the same
+
+The research core is untouched, on purpose. v2 still has the same three agents, the same prompts, the same citation-required policy, the same retry loop with a circuit breaker, and the same benchmark harness and committed results. The real-model result below was measured on the v1 pipeline in April 2026 and has not been re-run on v2. In mock mode the v2 benchmark reproduces the v1 behavior exactly.
+
+### Bugs v2 fixed along the way
+
+- **Schema validation was silently skipped.** The contract checks on findings (fix text at least 20 characters, confidence between 0 and 1, ID formats) only ran in a dataclass fallback path. When pydantic, the real dependency, was installed, they did not run at all. v2 routes them through a pydantic validator so they fire in both modes.
+- **Clean files cost three times too much.** The Evaluator used to force up to two extra Security Sentinel retries on files with no findings. v2 removes that, cutting cost on clean inputs by roughly 3x with no change to benchmark results.
+
+### Which one should you use?
+
+Use **v2**. It contains everything v1 does. Go back to the v1 snapshot only if you want to read the course submission exactly as it was graded; it lives at [AravindB98/CodeSentinel](https://github.com/AravindB98/CodeSentinel) and in this repository's early git history.
+
+---
+
+## The headline number
+
+| System | TPR | False discovery rate | False positives | CWE accuracy |
 |---|---|---|---|---|
 | Single-prompt baseline | 1.000 | 0.789 | **30** | 1.000 |
 | Multi-agent CodeSentinel | 1.000 | 0.111 | **1** | 1.000 |
-| **Δ** | 0.000 | **−0.678** | **−29 (−97%)** | 0.000 |
+| **Change** | 0.000 | **-0.678** | **-29** | 0.000 |
 
-Real Claude Sonnet, 10-sample hand-labeled suite, same model/prompts/samples — the
-97% reduction is attributable purely to the architecture. Paired suite (20 samples):
-McNemar's exact **p = 0.0312**. See the [technical report](./docs/CodeSentinel_Technical_Report.pdf).
+How to read this: both systems found all 8 real vulnerabilities (TPR 1.000). The single prompt also reported 30 findings that did not exist. CodeSentinel reported 1. The third column is false positives divided by all reported findings (FP / (FP + TP)); the benchmark script labels it "FPR", but it is a false discovery rate, since the suite has no count of true negatives.
 
----
+### Exactly what was measured, and what was not
 
-## Quick start
+This section was corrected on October 22, 2026 after re-reading the committed results in [`eval/results/`](./eval/results/). Earlier versions of this README overstated the evidence. Everything below can be checked against those files.
 
-```bash
-pip install "codesentinel[llm]"        # or just `codesentinel` for offline-only
-codesentinel ingest                    # build the RAG knowledge base (once)
+- **The 30 → 1 table is a single run.** Real Claude Sonnet, the 10-sample toy suite (8 Python, 2 JavaScript), April 20, 2026, in [`eval/results/20260420_143220/`](./eval/results/20260420_143220/). It has not been repeated. McNemar's test on this run is not applicable: both systems caught every ground-truth finding, so there are zero discordant pairs.
+- **Two earlier real-model runs that afternoon returned nothing.** [`20260420_135336`](./eval/results/20260420_135336/) and [`20260420_141023`](./eval/results/20260420_141023/) show the multi-agent pipeline producing zero findings (TP 0, FN 8) against 31 and 32 baseline false positives. The cause is known and is in the git history: commit `47306a4` ("Fix 7 bugs causing multi-agent pipeline to produce zero security findings") landed at 14:53 that day and fixed a LangGraph state bug that handed agents an empty dict, plus a corrupted TF-IDF index that returned no relevant passages. The 14:32 run is the first after those fixes. Those two runs are kept in the repository on purpose.
+- **The p = 0.0312 result is from a different suite and a different mode.** It comes from the 20-sample, all-Python paired suite in [`eval/results/paired_suite_20sample/`](./eval/results/paired_suite_20sample/). That run took 0.18 seconds per sample, which means it was the deterministic mock LLM, not Claude. On that suite the effect is recall (TPR 0.333 → 1.000, six discordant pairs); false positives went from 4 to 2, a 50% reduction, not 97%. The p-value therefore does not support the 30 → 1 table, and the two numbers should not be quoted together.
+- **No 97% claim appears in this README any more.** 30 → 1 on one run of 10 samples is the honest statement.
+- **Five of the seven languages have never been benchmarked on the LLM path.** The committed suites contain only Python and JavaScript (and a synthetic suite with Java). TypeScript, Go, Ruby and PHP are covered by the offline rule engine and its unit tests only.
+- **The Semgrep comparison is empty.** [`eval/results/semgrep_comparison/`](./eval/results/semgrep_comparison/) records zero findings for both tools on the target and was never adjudicated. It should not be cited as evidence either way.
+- **The summary writer has a bug.** `eval/run_benchmark.py` prints "direction favors baseline" for one run and "favors multi-agent" for another with identical numbers (compare the two zero-finding runs). The direction line in `summary.md` files should not be trusted until that is fixed.
 
-# Scan a repo, fail CI on HIGH+, emit SARIF for code scanning
-codesentinel scan ./your-repo --fail-on HIGH -f sarif -o results.sarif
-
-# No API key? Fully offline, deterministic, 7 languages:
-CODESENTINEL_MOCK_LLM=1 codesentinel scan ./your-repo
-```
-
-Run it as a service:
-
-```bash
-docker compose up --build
-curl -s localhost:8080/v1/scan -H "X-API-Key: $KEY" \
-  -d '{"code":"cur.execute(f\"select {x}\")","language":"python"}'
-```
-
-Gate pull requests in one step (uploads to GitHub code scanning):
-
-```yaml
-- uses: AravindB98/CodeSentinel@v1
-  with: { path: ., fail-on: HIGH, anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }} }
-```
+The technical report (section 10.4) describes the result as suggestive, which is the right word. A proper re-run of both suites, several times, with the metric relabelled, is the next evaluation task; see [Reproduce the benchmark](#reproduce-the-benchmark).
 
 ---
 
-## Capabilities
+## How it works
 
-- **Two engines, one tool.** Deterministic regex rules (offline/air-gapped, no key)
-  **and** the multi-agent AI pipeline (with a model). Pick per environment.
-- **7 languages** out of the box: Python, JavaScript, TypeScript, Java, Go, Ruby, PHP.
-- **Provenance on every finding** — CWE, OWASP 2025 mapping, a concrete fix, and the
-  exact corpus passage that grounds it.
-- **Outputs that fit your stack** — SARIF 2.1.0, JSON, Markdown, standalone HTML.
-- **Service-ready** — FastAPI with API-key auth, tenant isolation, rate limiting,
-  Prometheus metrics, structured logs, health/readiness probes.
-- **Deploy anywhere** — non-root container, hardened Helm chart, GitHub Action;
-  on-prem, Kubernetes, SaaS, or fully air-gapped.
-- **Enterprise/Gov controls** — SSO, tamper-evident audit log, compliance packs,
-  offline Ed25519 licensing, SBOM.
-
-## Architecture
+### The multi-agent pipeline (AI mode)
 
 ```mermaid
 flowchart LR
     IN([Source code]) --> SS[Security Sentinel<br/>RAG-grounded]
     IN --> QA[Quality Auditor]
-    RAG[(RAG index<br/>70 passages)] <--> SS
+    RAG[(Knowledge base<br/>70 passages)] <--> SS
     SS --> EG{Evaluator Guardian<br/>programmatic + LLM}
     QA --> EG
-    EG -- APPROVED --> OUT([SARIF / JSON / HTML])
-    EG -. REJECTED · retry max 3 .-> SS
+    EG -- APPROVED --> OUT([SARIF / JSON / MD / HTML])
+    EG -. REJECTED, retry max 3 .-> SS
     style SS fill:#fff4e3,stroke:#d97706,color:#1a1c17
     style QA fill:#fff4e3,stroke:#d97706,color:#1a1c17
     style EG fill:#feeadc,stroke:#c2410c,color:#1a1c17
@@ -110,76 +185,419 @@ flowchart LR
     style OUT fill:#f0f4e6,stroke:#5a7a1a,color:#1a1c17
 ```
 
-Full engineering reference: [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md).
+Step by step, for one file:
 
-## Editions
+1. **Retrieve.** The code is used to query the knowledge base. The top 6 passages come back (configurable as `retrieval_k`). Retrieval has three backends and falls through them automatically: ChromaDB with sentence-transformer embeddings, then a scikit-learn TF-IDF index, then a pure-Python scorer with no dependencies.
+2. **Security Sentinel.** An LLM agent with one job: find vulnerabilities, and for each one cite a passage ID from the retrieved set, name the CWE, give a confidence, and write a concrete fix.
+3. **Quality Auditor.** A second agent reviews maintainability and style. It runs independently and never makes security claims.
+4. **Evaluator Guardian.** Every finding goes through two layers:
+   - **Programmatic checks.** Is a citation present, and is it one of the passages that was actually retrieved? Is the fix at least 20 characters? Is confidence at least 0.5? Does the finding match the schema? These are plain code, so the model cannot talk its way past them.
+   - **Semantic check.** An LLM call asks whether the cited passage really supports the claim.
+5. **Route.** Approved findings go to the report. Rejected findings go back to the Security Sentinel with structured feedback. A circuit breaker stops the loop after 3 retries so it cannot run forever or run up cost.
+
+The pipeline is orchestrated with LangGraph using explicit typed state. If LangGraph is not installed, an equivalent built-in runner executes the same graph.
+
+A story worth knowing: during development the Evaluator rejected a *correct* finding on a `hashlib.md5` sample, because the mock model cited a passage the retriever had not returned. The system caught a bug in its own test fixture. The fix was to correct the citation, not to relax the rule. Details are in section 11.6 of the technical report.
+
+### The deterministic engine (offline mode, new in v2)
+
+When there is no API key, or when you force offline mode, CodeSentinel uses a registry of 32 regex-based rules. Each rule maps to a CWE, an OWASP category, a severity, a fix, and a knowledge base passage, so offline findings carry the same provenance as AI findings. Nothing leaves the machine. Results are identical on every run, which is what makes it suitable for CI and air-gapped networks.
+
+### How the scanning engine chooses
+
+```mermaid
+flowchart TD
+    A[codesentinel scan PATH] --> B[Discover files<br/>include/exclude globs, size cap]
+    B --> C[Detect language per file]
+    C --> D{API key set and<br/>mock mode off?}
+    D -- yes --> E[Multi-agent LLM pipeline]
+    D -- no --> F[Deterministic 32-rule engine]
+    E --> G[Deduplicate, apply baseline,<br/>severity and confidence policy]
+    F --> G
+    G --> H[Report: text, JSON, SARIF, Markdown, HTML]
+    G --> I[CI gate: exit 1 if a finding<br/>meets the fail-on severity]
+```
+
+The choice can be pinned with `engine: auto | deterministic | llm` in `.codesentinel.yml`.
+
+---
+
+## Quick start
+
+> **Install from this repository, not from PyPI.** The name `codesentinel` on PyPI belongs to an unrelated project, so `pip install codesentinel` would install something else.
+
+**Offline, no API key (about one minute):**
+
+```bash
+git clone https://github.com/AravindB98/CodeSentinel-v2.git
+cd CodeSentinel-v2
+pip install -e .
+
+codesentinel scan ./your-repo --mock
+```
+
+**Full AI review:**
+
+```bash
+pip install -e ".[llm,rag,graph]"
+export ANTHROPIC_API_KEY=sk-ant-...
+codesentinel ingest                  # build the knowledge base index (once)
+codesentinel scan ./your-repo
+```
+
+**Everything, including API server, UI, and dev tools:**
+
+```bash
+pip install -e ".[all,dev]"
+make test                            # 67 tests
+```
+
+Requires Python 3.10 or newer. The core install is deliberately small (pydantic, PyYAML, NumPy); heavier capabilities sit behind extras:
+
+| Extra | Adds |
+|---|---|
+| `llm` | Anthropic SDK for real-model review |
+| `rag` | ChromaDB, sentence-transformers, scikit-learn for semantic retrieval |
+| `graph` | LangGraph orchestration |
+| `api` | FastAPI and Uvicorn for the REST service |
+| `ui` | Streamlit demo app |
+| `dev` | pytest, ruff, mypy |
+| `all` | `llm`, `rag`, `graph`, `api`, `ui` |
+
+### What the output looks like
+
+```text
+$ codesentinel scan demo.py --mock
+CodeSentinel 1.0.0 (community edition) - target: demo.py
+
+CRITICAL CWE-89     demo.py:3
+  SQL Injection: CWE-89 (A03:2025 Injection)
+  > cur.execute(f"select * from t where id={x}")
+  fix: Use parameterized queries with placeholders instead of f-strings.
+  provenance: patterns.md::PY-01 | confidence 0.94
+
+CRITICAL CWE-502    demo.py:5
+  Insecure Deserialization: CWE-502 (A08:2025 Software and Data Integrity Failures)
+  > return pickle.loads(x)
+  fix: Never unpickle untrusted data. Use json.loads() with schema validation.
+  provenance: patterns.md::PY-02 | confidence 0.96
+
+HIGH     CWE-78     demo.py:4
+  Command Injection: CWE-78 (A03:2025 Injection)
+  > os.system("ls "+x)
+  fix: Avoid os.system; use subprocess.run([...]) with a list of arguments.
+  provenance: patterns.md::PY-03 | confidence 0.84
+
+Summary: 3 finding(s) [crit 2 · high 1 · med 0 · low 0 · info 0] across 1 file(s)
+```
+
+The `provenance` line is the citation: the knowledge base passage that grounds the finding.
+
+---
+
+## Using the CLI
+
+The command is `codesentinel`, with `cs` as a short alias.
+
+| Command | What it does |
+|---|---|
+| `codesentinel scan PATH` | Scan a file or directory |
+| `codesentinel baseline PATH` | Snapshot current findings so only new ones fail CI |
+| `codesentinel rules` | List the detection rules (`--json` for machine output) |
+| `codesentinel ingest` | Build or rebuild the knowledge base index |
+| `codesentinel serve` | Run the REST API |
+| `codesentinel sbom` | Emit a CycloneDX SBOM for the install |
+| `codesentinel license info` | Show the active edition and license |
+| `codesentinel version` | Print version and edition |
+
+Useful `scan` options:
+
+| Option | Meaning |
+|---|---|
+| `-f text\|json\|sarif\|markdown\|html` | Report format (default `text`) |
+| `-o FILE` | Write the report to a file |
+| `--fail-on SEVERITY` | Exit 1 if any finding is at or above this severity |
+| `--severity-threshold SEVERITY` | Minimum severity to report |
+| `--baseline FILE` | Suppress findings recorded in a baseline |
+| `--mock` | Force the deterministic offline engine |
+| `--no-quality` | Security findings only, skip the Quality Auditor |
+| `--concurrency N` | Parallel file workers |
+| `-c FILE` | Path to a `.codesentinel.yml` |
+
+Common recipes:
+
+```bash
+# Gate a build on HIGH or worse, write SARIF for code scanning
+codesentinel scan . --fail-on HIGH -f sarif -o results.sarif
+
+# Adopt on a legacy codebase: accept today's findings, fail only on new ones
+codesentinel baseline . -o .codesentinel-baseline.json
+codesentinel scan . --baseline .codesentinel-baseline.json --fail-on HIGH
+
+# A shareable HTML report
+codesentinel scan . -f html -o report.html
+```
+
+Baselines store line-independent fingerprints (rule, file, normalized snippet), so moving code around does not resurrect old findings.
+
+---
+
+## Running it as a service
+
+```bash
+cp .env.example .env                 # set CODESENTINEL_API_KEYS=tenant:secret
+docker compose up --build
+
+curl -s localhost:8080/v1/scan \
+  -H "X-API-Key: $KEY" -H "Content-Type: application/json" \
+  -d '{"code":"cur.execute(f\"select {x}\")","language":"python"}'
+```
+
+Or without Docker: `pip install -e ".[api]"` then `codesentinel serve`.
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /v1/scan` | Scan submitted code |
+| `GET /v1/scans`, `GET /v1/scans/{id}` | List and fetch past scans (scoped to the calling tenant) |
+| `GET /v1/rules` | The rule registry |
+| `GET /v1/audit` | Audit log access |
+| `GET /healthz`, `GET /readyz` | Liveness and readiness probes |
+| `GET /metrics` | Prometheus metrics |
+| `GET /version` | Version and edition |
+
+API keys take the form `tenant:secret`, and each tenant only sees its own scans. The service applies rate limiting, security headers, and a request body cap. For Kubernetes there is a hardened chart at [`deploy/helm/codesentinel`](./deploy/helm/codesentinel) (non-root, autoscaling, ingress, secrets). Full guides: [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) and [docs/API.md](./docs/API.md).
+
+---
+
+## CI/CD integration
+
+The repository is itself a composite GitHub Action. It scans, uploads SARIF to GitHub code scanning, and fails the job at your chosen severity:
+
+```yaml
+- uses: AravindB98/CodeSentinel-v2@master
+  with:
+    path: .
+    fail-on: HIGH
+    anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}   # omit and set offline: "true" for the rule engine only
+```
+
+A complete workflow is in [`examples/github-code-scanning.yml`](./examples/github-code-scanning.yml). On GitLab, Azure DevOps, or anything else, run the CLI and publish the SARIF file as an artifact; the exit code does the gating.
+
+---
+
+## Configuration
+
+Settings resolve in this order: CLI flags, then environment variables, then `.codesentinel.yml`, then defaults.
+
+```yaml
+# .codesentinel.yml
+include: ["**/*"]
+exclude: ["**/vendor/**", "**/*.min.js"]
+max_file_bytes: 1000000
+concurrency: 8
+quality: true
+min_confidence: 0.5
+engine: auto                 # auto | deterministic | llm
+baseline: .codesentinel-baseline.json
+disabled_rules: ["CS-PY-WEAKHASH"]   # rule id, CWE, or category
+gate:
+  severity_threshold: INFO   # minimum severity to report
+  fail_on: HIGH              # exit 1 at or above this
+llm:
+  model: claude-sonnet-4-5
+  retrieval_k: 6
+  max_retries: 3
+```
+
+| Environment variable | Purpose |
+|---|---|
+| `ANTHROPIC_API_KEY` | Enables AI review. Unset means offline mode |
+| `CODESENTINEL_MOCK_LLM=1` | Force offline mode even if a key is present |
+| `CODESENTINEL_MODEL` | Model ID for AI mode |
+| `CODESENTINEL_API_KEYS` | `tenant:secret` pairs for the REST service |
+| `CODESENTINEL_LICENSE_KEY` | Signed license token for paid editions |
+| `CODESENTINEL_AUDIT_LOG` | Path of the hash-chained audit log |
+| `CODESENTINEL_LOG_FORMAT` | `json` or `text` |
+
+The full list is in [docs/ADMIN.md](./docs/ADMIN.md).
+
+---
+
+## Detection coverage
+
+The offline engine ships 32 rules. TypeScript files are scanned with the JavaScript rules, which gives 7 supported languages from 6 rule sets.
+
+| Language | Rules | What they catch |
+|---|---|---|
+| Python | 11 | SQL injection (f-string and concatenation), `os.system` and `shell=True` command injection, `eval`, unsafe `pickle`, `yaml.load` without SafeLoader, hard-coded credentials, disabled TLS verification, weak hashes, Flask debug mode |
+| JavaScript / TypeScript | 6 | SQL injection via template literals, `eval`, `child_process.exec`, DOM XSS via `innerHTML`, prototype pollution, hard-coded credentials |
+| Java | 4 | SQL injection via `Statement`, `Runtime.exec`, unsafe `ObjectInputStream`, XXE-prone `DocumentBuilderFactory` |
+| Go | 4 | SQL injection via `Sprintf`, shell `exec.Command`, disabled TLS verification, weak hashes |
+| PHP | 4 | SQL injection from request superglobals, command injection, `eval`, file inclusion |
+| Ruby | 3 | Command injection via interpolation, `eval`, `YAML.load` |
+
+CWEs covered: 78, 79, 89, 94, 98, 295, 327, 489, 502, 611, 798, 1321. Run `codesentinel rules` for the live list. In AI mode the Security Sentinel is not limited to these patterns; it reasons over the code with the knowledge base as its reference.
+
+---
+
+## Editions and licensing
+
+CodeSentinel is open core. Everything needed to scan code is free under Apache-2.0. Paid editions add organizational controls.
 
 | | Community | Team | Enterprise | Government |
 |---|---|---|---|---|
-| AI + offline engines, SARIF, CLI, API | ✓ | ✓ | ✓ | ✓ |
-| Private rule packs | — | ✓ | ✓ | ✓ |
-| Multi-tenant, SSO, audit export, compliance packs | — | — | ✓ | ✓ |
-| Supported air-gapped operation | — | — | Add-on | ✓ |
+| AI and offline engines, all report formats, CLI, API, Action, Docker, Helm | ✓ | ✓ | ✓ | ✓ |
+| Private rule packs | | ✓ | ✓ | ✓ |
+| Multi-tenant controls, SSO, audit export, compliance packs | | | ✓ | ✓ |
+| Supported air-gapped operation | | | Add-on | ✓ |
 
-Free open core (Apache-2.0). Paid editions add the controls teams and governments
-need at scale — see **[pricing](./docs/PRICING.md)** and **[licensing](./LICENSING.md)**.
+Paid features are unlocked by Ed25519-signed license keys that are verified **offline**. There is no phone-home, which matters for air-gapped buyers. See [docs/PRICING.md](./docs/PRICING.md) (indicative figures) and [LICENSING.md](./LICENSING.md).
 
-## Documentation
-
-| Topic | Doc |
-|---|---|
-| Deploy (on-prem · k8s · air-gapped · SaaS) | [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) |
-| Administration & configuration | [docs/ADMIN.md](./docs/ADMIN.md) |
-| REST API reference | [docs/API.md](./docs/API.md) |
-| Editions & pricing | [docs/PRICING.md](./docs/PRICING.md) |
-| Compliance (NIST · SOC 2 · ISO · FedRAMP · CRA) | [docs/COMPLIANCE.md](./docs/COMPLIANCE.md) |
-| Threat model | [docs/THREAT_MODEL.md](./docs/THREAT_MODEL.md) |
-| Security policy | [SECURITY.md](./SECURITY.md) |
-| Solution brief (for buyers) | [docs/SOLUTION_BRIEF.md](./docs/SOLUTION_BRIEF.md) |
-| Architecture | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) |
-
-## Repository structure
-
-```
-codesentinel/            # installable package
-├── engine.py            #   multi-file scanner (deterministic + LLM backends)
-├── cli.py               #   scan / serve / rules / baseline / sbom / license
-├── config.py            #   .codesentinel.yml + env + overrides
-├── rules.py             #   32-rule registry across 7 languages
-├── models.py            #   normalized Finding / ScanResult contract
-├── editions.py          #   Ed25519 offline licensing + feature gating
-├── audit.py             #   hash-chained tamper-evident audit log
-├── observability.py     #   Prometheus metrics + structured logging
-├── sbom.py              #   CycloneDX 1.5 SBOM
-├── reporters/           #   SARIF 2.1.0 · JSON · Markdown · HTML
-├── api/                 #   FastAPI service + auth
-├── graph/               #   LangGraph multi-agent pipeline + prompts
-├── rag/                 #   retrieval (ChromaDB → TF-IDF → pure-python)
-├── rl/ · synth/ · utils/
-deploy/helm/             # Kubernetes chart
-.github/workflows/       # CI, CodeQL, self-scan, release, pages
-eval/                    # reproducible benchmark harness + results
-tests/                   # 35 unit tests (pass with or without optional deps)
-Dockerfile · docker-compose.yml · action.yml · Makefile · pyproject.toml
-```
+---
 
 ## Reproduce the benchmark
 
 ```bash
-make benchmark                         # deterministic mock-mode, no key
-ANTHROPIC_API_KEY=sk-ant-... make benchmark   # real Claude Sonnet (~$2 toy suite)
+make ingest
+make benchmark                                  # deterministic mock mode, no key, free
+make benchmark-paired                           # 20-sample paired suite
+ANTHROPIC_API_KEY=sk-ant-... make benchmark     # real Claude Sonnet, roughly $2 for the toy suite
+make semgrep-compare                            # comparison against Semgrep (currently returns no findings)
 ```
 
-## From research to product
+Datasets are in [`eval/datasets/`](./eval/datasets/) and every committed run, with per-sample output, is in [`eval/results/`](./eval/results/). Mock-mode runs finish in well under a second per sample; real-model runs take tens of seconds per sample, so `elapsed_sec` in `multi_per_sample.json` tells you which mode produced a result.
 
-CodeSentinel began as research under **Prof. Nik Bear Brown** at Northeastern
-University (INFO 7375, Spring 2026). The architectural pattern — *specialize, ground,
-adversarially validate* — mirrors the approach industrial-scale AI security systems
-use to find zero-days; this project demonstrates it is reproducible, testable, and
-now **productized** with open tools. **Author:** Aravind Balaji ·
-balaji.ara@northeastern.edu.
+---
 
-## License
+## For researchers
 
-Open core under **Apache-2.0** (see [LICENSE](./LICENSE)). Enterprise/Government
-features are commercially licensed (see [LICENSING.md](./LICENSING.md)).
+This section records what a paper built on this repository can and cannot claim, and where the evidence lives. It is the reference for the planned write-up; the [technical report](./docs/CodeSentinel_Technical_Report.pdf) is the fuller course-era version.
+
+### Research question
+
+Does a multi-agent architecture that enforces retrieval-grounded citations and adversarial validation reduce hallucinated findings in LLM code review, holding the model, the prompts and the samples fixed?
+
+### Design of the comparison
+
+| | Single-prompt baseline | Multi-agent CodeSentinel |
+|---|---|---|
+| Model | Claude Sonnet (same) | Claude Sonnet (same) |
+| Prompt content | Same security prompt, one call | Same prompt, split across Security Sentinel, Quality Auditor, Evaluator Guardian |
+| Retrieval | None | Top-k = 6 passages from the 70-passage knowledge base |
+| Validation | None | Programmatic checks (citation in retrieved set, fix length, confidence, schema) plus an LLM semantic check |
+| Retry policy | None | Rejected findings return to the Sentinel with feedback, max 3 retries, circuit breaker |
+| Code | [`eval/baseline_single_prompt.py`](./eval/baseline_single_prompt.py) | [`codesentinel/graph/`](./codesentinel/graph/) |
+
+Harness: [`eval/run_benchmark.py`](./eval/run_benchmark.py). Prompts: [`codesentinel/graph/prompts/`](./codesentinel/graph/prompts/). Knowledge base source: [`codesentinel/rag/data/`](./codesentinel/rag/data/).
+
+### Datasets
+
+| Suite | Samples | Languages | Ground truth | Used for |
+|---|---|---|---|---|
+| `toy_suite.json` | 10 | 8 Python, 2 JavaScript | Hand-labeled CWE per sample | The 30 → 1 real-model run |
+| `paired_suite.json` | 20 | Python | Hand-labeled, OWASP-Benchmark style with vulnerable and safe pairs | McNemar's test (mock-mode run only so far) |
+| `synthetic_suite.json` | 29 | 16 Python, 7 JavaScript, 6 Java | Generated by `codesentinel/synth/` and verified | Not yet used in a committed result |
+
+### Metric definitions as implemented
+
+- **TPR** = TP / (TP + FN), where a true positive is a reported finding whose CWE matches a ground-truth finding for that sample.
+- **"FPR" in the script** = FP / (FP + TP). This is a false discovery rate, not a false positive rate, because the suites do not define true negatives. Any paper must label it as such or rebuild the suites with safe samples counted as negatives.
+- **CWE accuracy** = fraction of true positives whose CWE identifier matches ground truth exactly.
+- **McNemar's exact test** is computed per sample on "detected all ground-truth findings" (yes/no) for each system; discordant pairs drive the test.
+
+### What is established and what is open
+
+Established, with evidence in the repository: in one real-model run on 10 samples, false positives fell from 30 to 1 with recall unchanged at 1.0; the two preceding runs failed for a known, fixed engineering reason (commit `47306a4`); the mock-mode pipeline reproduces deterministically.
+
+Open, and required before any publication: a repeated real-model run of both suites (at least three repetitions each, to measure variance); a mock-free McNemar result; negatives counted so a true FPR can be reported; LLM-path coverage of the five languages that only the rule engine has been tested on; a Semgrep comparison that actually produces findings and is adjudicated; the direction-line bug in the summary writer fixed before its output is quoted.
+
+### Citation
+
+Until a paper exists, cite the repository and the technical report:
+
+```bibtex
+@misc{balaji2026codesentinel,
+  author       = {Balaji, Aravind},
+  title        = {CodeSentinel: Multi-Agent, Retrieval-Grounded, Adversarially Validated Code Security Review},
+  year         = {2026},
+  howpublished = {\url{https://github.com/AravindB98/CodeSentinel-v2}},
+  note         = {Technical report, Northeastern University, INFO 7375, advised by Nik Bear Brown}
+}
+```
+
+---
+
+## Repository structure
+
+```
+codesentinel/            # the installable package
+├── engine.py            #   multi-file scanner, chooses deterministic or LLM backend
+├── cli.py               #   scan / serve / ingest / rules / baseline / sbom / license
+├── config.py            #   .codesentinel.yml + environment + CLI overrides
+├── rules.py             #   32-rule registry
+├── models.py            #   normalized Finding / ScanResult contract
+├── editions.py          #   Ed25519 offline licensing and feature gating
+├── audit.py             #   hash-chained tamper-evident audit log
+├── observability.py     #   Prometheus metrics and structured logging
+├── sbom.py              #   CycloneDX 1.5 SBOM
+├── reporters/           #   SARIF 2.1.0, JSON, Markdown, HTML, text
+├── api/                 #   FastAPI service and auth
+├── graph/               #   the three agents, prompts, schemas, LangGraph wiring
+├── rag/                 #   knowledge base data, ingest, three-backend retriever
+├── rl/                  #   bandit and policy experiments from the research phase
+├── synth/               #   synthetic sample generation and verification
+└── utils/               #   LLM client (real and mock)
+app/streamlit_app.py     # demo UI
+deploy/helm/             # Kubernetes chart
+.github/workflows/       # CI, CodeQL, self-scan, release, pages
+eval/                    # benchmark harness, datasets, committed results
+tests/                   # 67 tests
+docs/                    # guides, technical report, architecture
+index.html               # the project website
+Dockerfile · docker-compose.yml · action.yml · Makefile · pyproject.toml
+```
+
+---
+
+## Honest limitations
+
+- **The evaluation is small and partly single-run.** The 30 → 1 result is one real-model run of 10 hand-labeled samples; the significance test comes from a 20-sample mock-mode run on a different suite. See [The headline number](#the-headline-number) for the full accounting. It is evidence that the architecture is worth testing properly, not a claim about performance on arbitrary production code.
+- **The real-model result was measured on v1.** The v2 pipeline uses the same agents and prompts, but the real-model benchmark has not been re-run since productization.
+- **The offline engine is pattern matching.** Regex rules cannot reason about data flow or reachability. They miss vulnerabilities that span functions and can flag safe code that looks similar to unsafe code.
+- **AI mode costs money and sends code to a model provider.** Use offline mode where that is not acceptable.
+- **Some product pieces are scaffolding.** Pricing is indicative, the commercial license needs legal review, and contact addresses in `SECURITY.md`, `LICENSING.md`, and `docs/` are placeholders.
+- **Not on PyPI.** Install from this repository as shown above.
+
+---
+
+## Documentation and links
+
+| Resource | Where |
+|---|---|
+| Project website | https://aravindb98.github.io/CodeSentinel-v2/ |
+| Live Streamlit demo | https://codesentinel-f2ggdvqeuwsj4pta5sk27s.streamlit.app |
+| Video walkthrough (7 min) | https://youtu.be/do8GvAK7tHI |
+| Technical report (46 pages) | [docs/CodeSentinel_Technical_Report.pdf](./docs/CodeSentinel_Technical_Report.pdf) |
+| Architecture reference | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) |
+| Deployment (on-prem, Kubernetes, air-gapped, SaaS) | [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) |
+| Administration and configuration | [docs/ADMIN.md](./docs/ADMIN.md) |
+| REST API reference | [docs/API.md](./docs/API.md) |
+| Compliance mapping (NIST SSDF, AI RMF, SOC 2, ISO, FedRAMP, EU CRA) | [docs/COMPLIANCE.md](./docs/COMPLIANCE.md) |
+| Threat model | [docs/THREAT_MODEL.md](./docs/THREAT_MODEL.md) |
+| Security policy | [SECURITY.md](./SECURITY.md) |
+| Editions and pricing | [docs/PRICING.md](./docs/PRICING.md) |
+| Solution brief | [docs/SOLUTION_BRIEF.md](./docs/SOLUTION_BRIEF.md) |
+| Changelog and release notes | [CHANGELOG.md](./CHANGELOG.md), [docs/RELEASE_NOTES_v1.0.0.md](./docs/RELEASE_NOTES_v1.0.0.md) |
+| v1 research prototype | https://github.com/AravindB98/CodeSentinel |
+
+The website and the technical report describe the v1 research phase (35 tests, 56 passages); this README is the reference for v2.
+
+---
+
+## Credits and license
+
+CodeSentinel began as research under **Prof. Nik Bear Brown** at Northeastern University (INFO 7375, Spring 2026). Contributions are welcome; see [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+The open core is licensed under **Apache-2.0** ([LICENSE](./LICENSE)). Enterprise and Government features are commercially licensed ([LICENSING.md](./LICENSING.md)).
+
+**Author:** Aravind Balaji · [aravindbalaji.com](https://aravindbalaji.com) · [GitHub](https://github.com/AravindB98) · [LinkedIn](https://linkedin.com/in/aravindbalaji250) · balaji.ara@northeastern.edu
